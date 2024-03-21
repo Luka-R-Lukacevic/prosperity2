@@ -1,0 +1,6 @@
+[submodule "imc-prosperity-2-visualizer"]
+	path = imc-prosperity-2-visualizer
+	url = https://github.com/jmerle/imc-prosperity-2-visualizer
+[submodule "testing/backtest-imc-prosperity-2023"]
+	path = testing/backtest-imc-prosperity-2023
+	url = https://github.com/n-0/backtest-imc-prosperity-2023
