@@ -3,21 +3,13 @@
 This folder contains our backtester for Prosperity 2. It is an adaptation of Niklas Jona's backtester [project](https://github.com/n-0/backtest-imc-prosperity-2023) from last year. With our modification it also produces logs that get accepted by jmerle's [project](https://github.com/jmerle/imc-prosperity-2-visualizer) visualizer for this year.
 
 ## Order matching
-Orders returned by the `Trader.run` method, are matched against the `OrderDepth`
-of the state provided to the method call. The trader always gets their trade and
-trades from bots are ignored. An order is matched only if the price is exactly the
-same as an opposite one from `OrderDepth`. If the new position that would result from
-this order exceeds the specified limit of the symbol, all following orders (including the failing one)
-are cancelled. You can relax those conditions by answering sth. to `Matching orders halfway (sth. not blank for True):`, during the input dialog
-of the backtester. Halfway matches any volume (regardless of order book), such that
-sell/buy orders are always matched, if they're below/above the midprice
-of the highest bid/lowest ask (regardless of volume).
-If an order couldn't be matched the backtester will look the current order depth and your unmatched order.
+We introduced some changes to the order matching logic to more accurately capture the trading dynamics for this year. Orders returned by the `Trader.run` method, are matched against the `OrderDepth`of the state provided to the method call. The trader always gets their trade and trades from bots are ignored. Any order from the trader that matches with the orderbook (there is an overlap with it) will be executed at the level of the orderbook. If the new position that would result from an order exceeds the specified limit of the symbol, all following orders (including the failing one)
+are cancelled.
 
 ## After All
-If your trader has a method called `after_last_round`, it will be called after the logs have been written.
+If a trader has a method called `after_last_round`, it will be called after the logs have been written.
 This is useful for plotting something with matplotlib for example (but don't forget to remove the import,
-when you upload your algorithm).
+when you upload your algorithm). We have not touched this part of [Niklas](https://github.com/n-0/backtest-imc-prosperity-2023), so it might need additional debugging.
 
 ## General usage
 Add the csv's from IMC to the training folder and adjust if necessary the constant `TRAINING_DATA_PREFIX`
