@@ -1,10 +1,6 @@
-# Backtest IMC Prosperity 2023
+# Backtester IMC Prosperity 2024
 
-This is repo contains utilities for IMC Prosperity 2023 challenge.
-Right now, it has the [backtester.py](./backtester.py), that should mimic log files from
-the prosperity challenge [platform](https://prosperity.imc.com/).
-The format is good enough to be accepted by jmerle's amazing [project](https://github.com/jmerle/imc-prosperity-visualizer),
-for visualizing the order book as well as your trades.
+This folder contains our backtester for Prosperity 2. It is an adaptation of Niklas Jona's backtester [project](https://github.com/n-0/backtest-imc-prosperity-2023) from last year. With our modification it also produces logs that get accepted by jmerle's [project](https://github.com/jmerle/imc-prosperity-2-visualizer) visualizer for this year.
 
 ## Order matching
 Orders returned by the `Trader.run` method, are matched against the `OrderDepth`
