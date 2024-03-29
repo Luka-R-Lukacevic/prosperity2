@@ -10,11 +10,7 @@ from datamodel import Listing, Observation, Order, OrderDepth, ProsperityEncoder
 
 
 class Logger:
-    # Set this to true, if u want to create
-    # local logs
     local: bool
-    # this is used as a buffer for logs
-    # instead of stdout
     local_logs: dict[int, str] = {}
 
     def __init__(self, local=False) -> None:
