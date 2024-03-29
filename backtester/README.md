@@ -3,8 +3,7 @@
 This folder contains our backtester for Prosperity 2. It is an adaptation of Niklas Jona's backtester [project](https://github.com/n-0/backtest-imc-prosperity-2023) from last year. With our modification it also produces logs that get accepted by jmerle's [project](https://github.com/jmerle/imc-prosperity-2-visualizer) visualizer for this year.
 
 ## Order matching
-We introduced some changes to the order matching logic to more accurately capture the trading dynamics for this year. Orders returned by the `Trader.run` method, are matched against the `OrderDepth`of the state provided to the method call. The trader always gets their trade and trades from bots are ignored. Any order from the trader that matches with the orderbook (there is an overlap with it) will be executed at the level of the orderbook. If the new position that would result from an order exceeds the specified limit of the symbol, all following orders (including the failing one)
-are cancelled.
+We introduced some changes to the order matching logic to more accurately capture the trading dynamics for this year. Orders returned by the `Trader.run` method, are matched against the `OrderDepth`of the state provided to the method call. The trader always gets their trade and trades from bots are ignored. Any order from the trader that matches with the orderbook (there is an overlap with it) will be executed at the level of the orderbook. If the new position that would result from an order exceeds the specified limit of the symbol, all following orders (including the failing one) are cancelled.
 
 ## After All
 If a trader has a method called `after_last_round`, it will be called after the logs have been written.
@@ -15,99 +14,31 @@ when you upload your algorithm). We have not touched this part of [Niklas](https
 There is a folder called `training` with the csv files for all rounds. You can adjust `TRAINING_DATA_PREFIX`
 to the full path of `training` directory on your system, at the top of `backtester.py`. Leaving it as is should work fine for simply downloading this repo.
 
-No import your Trader at the top of `backtester.py` (in the repo the Trader from `current_algo.py` is used). It might be easier to understand the changes needed to be made when going from the uploadable version to the local version to consider the file `no_trades_algo.py`.
-Now run
+Now import your Trader at the top of `backtester.py` (in the repo the Trader from `current_algo.py` is used). It might be easier to understand the changes needed to be made when going from the uploadable version to the local version to consider the file `no_trades_algo.py`.
+Then run
 ```bash
 python backtester.py
 ```
 This executes
-```
+```python
 if __name__ == "__main__":
     trader = Trader()
-    simulate_alternative(3, 0, trader, False, 30000)
+    simulate_alternative(round = 0, day = -2, trader, False, max_time = 199000)
 ```
-The central method is `simulate_alternative`. There are some default parameters
-and the meaning is
-```
-def simulate_alternative(
-        round: int, 
-        day: int, 
-        trader, 
-        time_limit=999900, 
-        names=True, 
-        halfway=False,
-        monkeys=False,
-        monkey_names=['Max', 'Camilla']
-    ):
-```
-where round and day are substituted to the following path `{TRAINING_DATA_PREFIX}/prices_round_{round}_day_{day}.csv` (same for `trades_round...`).
-Trader is your algorithm trader, `time_limit` can be decreased to only read a part of the full training file. `names` reads the training files with names on `market_trades`. `halfway` enables smarter order matching. The last two are a secret, that you might want to checkout for yourself.
+Here we see the central method, `simulate_alternative`.
 
 ## Logging with jmerle's visualizer
 Because the `backtester` doesn't read from the stdout nor stderr, logs produced have an empty `Submission logs:` section (still limit exceeds are printed).
-Furthermore the default `Logger` from jmerle's project won't do the trick, the following adjustments make it compatible
+Furthermore the default `Logger` from jmerle's project won't do the trick, the adjustments seen in `no_trades_algo.py` make it compatible. Subsequently, every print statement needs to be of the form
 
 ```python
-class Logger:
-    # Set this to true, if u want to create
-    # local logs
-    local: bool 
-    # this is used as a buffer for logs
-    # instead of stdout
-    local_logs: dict[int, str] = {}
-
-    def __init__(self, local=False) -> None:
-        self.logs = ""
-        self.local = local
-
-    def flush(self, state: TradingState, orders: dict[Symbol, list[Order]]) -> None:
-        output = json.dumps({
-            "state": self.compress_state(state),
-            "orders": self.compress_orders(orders),
-            "logs": self.logs,
-        }, cls=ProsperityEncoder, separators=(",", ":"), sort_keys=True))
-
-        if self.local:
-            self.local_logs[state.timestamp] = output
-
-        print(out)
-        self.logs = ""
-# ... And the rest of the compression logic
+self.logger.print("Here we can print something")
 ```
 
-and in your `Trader` class add the attribute like this:
-```
-class Trader:
+## Additional Bugs
+It is possible that the changes made for compatibility introduced further bugs. It is noticeable that the PnL in the backtester is significantly lower (around half) then the PnL in the uploaded files and the trading volume between bots reduces around half as well. The number of trades executed by the trader go down by a factor more than 10. The reason for this could be that although the backtester works fine, the backtester has significantly less action in it since the trader is only able to trade against the orderbook, whereas in the simulation the trader can send orders that bots then choose to interact with.
 
-    logger = Logger(local=True)
-```
-Now calls to `self.logger.flush` will be visible in the log files and available to the visualizer.
-Thus it can also provide you diagrams about prices, volumes etc.
-A working example is given in [dontlooseshells.py](./dontlooseshells.py).
-
-
-## Profit and Loss (PnL)
-PnL is maintained via four time series
- 
-* `profits_by_symbol` (the final pnl)
-* `balance_by_symbol:` (credit_by_symbol + unrealized_by_symbol) 
-* `credit_by_symbol:` (the amount of credit you had to take to open up the position (opposite sign of trade.quantity))
-* `unrealized_by_symbol:` (the approximated value (mid price) if you would close the position at this point in time) 
-PnL is calculated if your position of some asset is changed to 0, by a trade. Until then credit_by_symbol holds
-the amount of the previous executed trades and the amount of seashells you borrowed (both short and long require borrowing Because
-you're not trading on the profits or some initial balance of your previous competition rounds). On closing your whole position credit_by_symbol
-will only contain the pnl and is added to profits_by_symbol. This would not give you enough information to evaluate your current portfolio between trades, hence 
-the need for balance_by_symbol. For the logger file balance_by_symbol is added to profits_by_symbol, which gives similar values to the simulation. 
-Be aware that the IMC environment matches more trades, than the backtester, thus the final values might be different. But if exactly the same trades
-would be executed then both give the same results.
-
-
-The value of an executed trade is:
-```python
-current_pnl += -trade.price * trade.quantity
-```
-Meaning that if the trade was selling a symbol (e.g. Shorting) the trade.quantity is negative ,
-ending in a positive `current_pnl`. Hence buying a symbol is a positive trade.quantity, ending in a negative `current_pnl`.
-
-
-Good luck 🍀
+The more grim outlook is that there are still bugs in the funtionality of the backtester. Most likely these could be found:
+* When creating the orderbook out of the csv files with the function `process_prices` or `process_trades`.
+* When processing orders with the function `clear_order_book` (although I did rewrite that function already).
+* When calculating PnL via `trades_position_pnl_run` (although this would not explain the low number of trades).
