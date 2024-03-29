@@ -1,4 +1,4 @@
-from MarketMaking import Trader
+from MarktGemacht import Trader
 
 from datamodel import *
 from typing import Any  #, Callable
@@ -15,9 +15,11 @@ from datetime import datetime
 TIME_DELTA = 100
 # Please put all! the price and log files into
 # the same directory or adjust the code accordingly
-TRAINING_DATA_PREFIX = "testing\\training"
+TRAINING_DATA_PREFIX = "./training"
 
 ALL_SYMBOLS = [
+    'AMETHYSTS',
+    'STARFRUIT',
     'PEARLS',
     'BANANAS',
     'COCONUTS',
@@ -31,6 +33,8 @@ ALL_SYMBOLS = [
     'PICNIC_BASKET'
 ]
 POSITIONABLE_SYMBOLS = [
+    'AMETHYSTS',
+    'STARFRUIT',
     'PEARLS',
     'BANANAS',
     'COCONUTS',
@@ -42,6 +46,7 @@ POSITIONABLE_SYMBOLS = [
     'UKULELE',
     'PICNIC_BASKET'
 ]
+nullth_round = ['AMETHYSTS', 'STARFRUIT']
 first_round = ['PEARLS', 'BANANAS']
 snd_round = first_round + ['COCONUTS',  'PINA_COLADAS']
 third_round = snd_round + ['DIVING_GEAR', 'DOLPHIN_SIGHTINGS', 'BERRIES']
@@ -49,6 +54,7 @@ fourth_round = third_round + ['BAGUETTE', 'DIP', 'UKULELE', 'PICNIC_BASKET']
 fifth_round = fourth_round # + secret, maybe pirate gold?
 
 SYMBOLS_BY_ROUND = {
+    0: nullth_round,
     1: first_round,
     2: snd_round,
     3: third_round,
@@ -56,6 +62,7 @@ SYMBOLS_BY_ROUND = {
     5: fifth_round,
 }
 
+nullth_round_pst = ['AMETHYSTS', 'STARFRUIT']
 first_round_pst = ['PEARLS', 'BANANAS']
 snd_round_pst = first_round_pst + ['COCONUTS',  'PINA_COLADAS']
 third_round_pst = snd_round_pst + ['DIVING_GEAR', 'BERRIES']
@@ -63,6 +70,7 @@ fourth_round_pst = third_round_pst + ['BAGUETTE', 'DIP', 'UKULELE', 'PICNIC_BASK
 fifth_round_pst = fourth_round_pst # + secret, maybe pirate gold?
 
 SYMBOLS_BY_ROUND_POSITIONABLE = {
+    0: nullth_round_pst,
     1: first_round_pst,
     2: snd_round_pst,
     3: third_round_pst,
@@ -84,7 +92,7 @@ def process_prices(df_prices, round, time_limit) -> dict[int, TradingState]:
             observations: Dict[Product, Observation] = {}
             listings = {}
             depths = {}
-            states[time] = TradingState(time, listings, depths, own_trades, market_trades, position, observations)
+            states[time] = TradingState("", time, listings, depths, own_trades, market_trades, position, observations)
 
         if product not in states[time].position and product in SYMBOLS_BY_ROUND_POSITIONABLE[round]:
             states[time].position[product] = 0
@@ -132,6 +140,8 @@ def process_trades(df_trades, states: dict[int, TradingState], time_limit, names
     return states
        
 current_limits = {
+    "AMETHYSTS":20,
+    "STARFRUIT": 20,
     'PEARLS': 20,
     'BANANAS': 20,
     'COCONUTS': 600,
@@ -217,7 +227,9 @@ def trades_position_pnl_run(
         ):
         for time, state in states.items():
             position = copy.deepcopy(state.position)
-            orders = trader.run(state)[0]
+            orders, data = trader.run(state)
+            if time+TIME_DELTA <= max_time:
+                states[time+TIME_DELTA].traderData = data
             trades = clear_order_book(orders, state.order_depths, time, halfway)
             mids = calc_mid(states, round, time, max_time)
             if profits_by_symbol.get(time + TIME_DELTA) == None and time != max_time:
@@ -377,86 +389,90 @@ def cleanup_order_volumes(org_orders: List[Order]) -> List[Order]:
     return orders
 
 def clear_order_book(trader_orders: dict[str, List[Order]], order_depth: dict[str, OrderDepth], time: int, halfway: bool) -> list[Trade]:
-        trades = []
-        for symbol in trader_orders.keys():
-            if order_depth.get(symbol) != None:
-                symbol_order_depth = copy.deepcopy(order_depth[symbol])
-                t_orders = cleanup_order_volumes(trader_orders[symbol])
-                for order in t_orders:
-                    if order.quantity < 0:
-                        if halfway:
-                            bids = symbol_order_depth.buy_orders.keys()
-                            asks = symbol_order_depth.sell_orders.keys()
-                            max_bid = max(bids)
-                            min_ask = min(asks)
-                            if order.price <= statistics.median([max_bid, min_ask]):
-                                trades.append(Trade(symbol, order.price, order.quantity, "BOT", "YOU", time))
-                            else:
-                                print(f'No matches for order {order} at time {time}')
-                                print(f'Order depth is {order_depth[order.symbol].__dict__}')
+    trades = []
+    for symbol, orders in trader_orders.items():
+        if symbol in order_depth:
+            symbol_order_depth = copy.deepcopy(order_depth[symbol])
+            new_sell_orders = {int(price): qty for price, qty in symbol_order_depth.sell_orders.items()}
+            symbol_order_depth.sell_orders = new_sell_orders
+            new_buy_orders = {int(price): qty for price, qty in symbol_order_depth.buy_orders.items()}
+            symbol_order_depth.buy_orders = new_buy_orders
+
+            for order in orders:
+                unmatched_quantity = order.quantity
+                
+                previous_unmatched_quantity = None  # Track the quantity from the previous loop iteration
+                while unmatched_quantity != 0 and (unmatched_quantity != previous_unmatched_quantity):
+                    adjusted_price = order.price
+
+                    if unmatched_quantity < 0:  # Handling sell orders
+                        potential_buys = {price: qty for price, qty in symbol_order_depth.buy_orders.items() if float(price) >= order.price}
+                        if potential_buys:
+                            highest_buy_price = max(potential_buys.keys(), key=lambda x: float(x))
+                            adjusted_price = highest_buy_price
+                            potential_matches = [(price, qty) for price, qty in symbol_order_depth.buy_orders.items() if float(price) == adjusted_price]
                         else:
-                            potential_matches = list(filter(lambda o: o[0] == order.price, symbol_order_depth.buy_orders.items()))
-                            if len(potential_matches) > 0:
-                                match = potential_matches[0]
-                                final_volume = 0
-                                if abs(match[1]) > abs(order.quantity):
-                                    final_volume = order.quantity
-                                else:
-                                    #this should be negative
-                                    final_volume = -match[1]
-                                trades.append(Trade(symbol, order.price, final_volume, "BOT", "YOU", time))
-                            else:
-                                print(f'No matches for order {order} at time {time}')
-                                print(f'Order depth is {order_depth[order.symbol].__dict__}')
-                    if order.quantity > 0:
-                        if halfway:
-                            bids = symbol_order_depth.buy_orders.keys()
-                            asks = symbol_order_depth.sell_orders.keys()
-                            max_bid = max(bids)
-                            min_ask = min(asks)
-                            if order.price >= statistics.median([max_bid, min_ask]):
-                                trades.append(Trade(symbol, order.price, order.quantity, "YOU", "BOT", time))
-                            else:
-                                print(f'No matches for order {order} at time {time}')
-                                print(f'Order depth is {order_depth[order.symbol].__dict__}')
+                            potential_matches = []
+
+                    elif unmatched_quantity > 0:  # Handling buy orders
+                        potential_sells = {price: qty for price, qty in symbol_order_depth.sell_orders.items() if float(price) <= order.price}
+                        if potential_sells:
+                            lowest_sell_price = min(potential_sells.keys(), key=lambda x: float(x))
+                            adjusted_price = lowest_sell_price
+                            potential_matches = [(price, qty) for price, qty in symbol_order_depth.sell_orders.items() if float(price) == adjusted_price]
                         else:
-                            potential_matches = list(filter(lambda o: o[0] == order.price, symbol_order_depth.sell_orders.items()))
-                            if len(potential_matches) > 0:
-                                match = potential_matches[0]
-                                final_volume = 0
-                                #Match[1] will be negative so needs to be changed to work here
-                                if abs(match[1]) > abs(order.quantity):
-                                    final_volume = order.quantity
-                                else:
-                                    final_volume = abs(match[1])
-                                trades.append(Trade(symbol, order.price, final_volume, "YOU", "BOT", time))
+                            potential_matches = []
+                    if potential_matches:
+                        match_price, match_qty = potential_matches[0]
+                        trade_volume = min(abs(unmatched_quantity), abs(match_qty))
+                        if unmatched_quantity < 0:  # For sell orders
+                            trade_volume = -trade_volume  # Ensure the trade volume is negative
+                        trades.append(Trade(symbol, float(match_price), trade_volume, "YOU" if unmatched_quantity > 0 else "BOT", "BOT" if unmatched_quantity > 0 else "YOU", time))
+                        if unmatched_quantity < 0:
+                            if unmatched_quantity <= trade_volume:
+                                symbol_order_depth.buy_orders.pop(match_price)
                             else:
-                                print(f'No matches for order {order} at time {time}')
-                                print(f'Order depth is {order_depth[order.symbol].__dict__}')
-        return trades
+                                symbol_order_depth.buy_orders[match_price] = abs(match_qty) - abs(unmatched_quantity)
+                        else:
+                            if trade_volume == unmatched_quantity:
+                                symbol_order_depth.sell_orders.pop(match_price)
+                            else:
+                                symbol_order_depth.sell_orders[match_price] = abs(match_qty) - abs(unmatched_quantity)
+                        previous_unmatched_quantity = unmatched_quantity
+                        unmatched_quantity -= trade_volume
+                    else:
+                        break
+
+    return trades
+
+
+
+
                             
 csv_header = "day;timestamp;product;bid_price_1;bid_volume_1;bid_price_2;bid_volume_2;bid_price_3;bid_volume_3;ask_price_1;ask_volume_1;ask_price_2;ask_volume_2;ask_price_3;ask_volume_3;mid_price;profit_and_loss\n"
 log_header = [
-    'Sandbox logs:\n',
-    '0 OpenBLAS WARNING - could not determine the L2 cache size on this system, assuming 256k\n',
-    'START RequestId: 8ab36ff8-b4e6-42d4-b012-e6ad69c42085 Version: $LATEST\n',
-    'END RequestId: 8ab36ff8-b4e6-42d4-b012-e6ad69c42085\n',
-    'REPORT RequestId: 8ab36ff8-b4e6-42d4-b012-e6ad69c42085	Duration: 18.73 ms	Billed Duration: 19 ms	Memory Size: 128 MB	Max Memory Used: 94 MB	Init Duration: 1574.09 ms\n',
+    'Sandbox logs:\n'
 ]
+trades_header = ['Trade History:\n']
 
 def create_log_file(round: int, day: int, states: dict[int, TradingState], profits_by_symbol: dict[int, dict[str, float]], balance_by_symbol: dict[int, dict[str, float]], trader: Trader):
     file_name = uuid.uuid4()
     timest = datetime.timestamp(datetime.now())
     max_time = max(list(states.keys()))
-    log_path = os.path.join('testing\\logs', f'{timest}_{file_name}.log')
+    log_path = os.path.join('logs', f'{timest}_{file_name}.log')
     with open(log_path, 'w', encoding="utf-8", newline='\n') as f:
         f.writelines(log_header)
-        f.write('\n')
         for time, state in states.items():
             if hasattr(trader, 'logger'):
                 if hasattr(trader.logger, 'local_logs') != None:
                     if trader.logger.local_logs.get(time) != None:
-                        f.write(f'{time} {trader.logger.local_logs[time]}\n')
+                        log_entry = {
+                                        "sandboxLog": "",
+                                        "lambdaLog": trader.logger.local_logs[time],
+                                        "timestamp": time
+                                    }
+                        f.write(json.dumps(log_entry, indent=2))
+                        f.write("\n")
                         continue
             if time != 0:
                 f.write(f'{time}\n')
@@ -515,19 +531,13 @@ def create_log_file(round: int, day: int, states: dict[int, TradingState], profi
 # Adjust accordingly the round and day to your needs
 if __name__ == "__main__":
     trader = Trader()
-    max_time = int(input("Max timestamp (1-9)->(1-9)(00_000) or exact number): ") or 999000)
+    max_time = 199000
     if max_time < 10:
         max_time *= 100000
-    round = int(input("Input a round (blank for 4): ") or 4)
-    day = int(input("Input a day (blank for random): ") or random.randint(1, 3))
-    names_in = input("With bot names (default: y) (y/n): ")
-    names = True
-    if 'n' in names_in:
-        names = False
-    halfway_in = input("Matching orders halfway (default: n) (y/n): ")
-    halfway = False 
-    if 'y' in halfway_in:
-        halfway = True
+    round = 0
+    day = -2
+    names = False
+    halfway = True
     print(f"Running simulation on round {round} day {day} for time {max_time}")
     print("Remember to change the trader import")
     simulate_alternative(round, day, trader, max_time, names, halfway, False)
