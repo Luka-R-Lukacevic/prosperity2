@@ -12,10 +12,11 @@ This is useful for plotting something with matplotlib for example (but don't for
 when you upload your algorithm). We have not touched this part of [Niklas](https://github.com/n-0/backtest-imc-prosperity-2023), so it might need additional debugging.
 
 ## General usage
-Add the csv's from IMC to the training folder and adjust if necessary the constant `TRAINING_DATA_PREFIX`
-to the full path of `training` directory on your system, at the top of `backtester.py`.
-Import your Trader at the top of `backtester.py` (in the repo the Trader from `dontlooseshells.py` is used).
-Then run
+There is a folder called `training` with the csv files for all rounds. You can adjust `TRAINING_DATA_PREFIX`
+to the full path of `training` directory on your system, at the top of `backtester.py`. Leaving it as is should work fine for simply downloading this repo.
+
+No import your Trader at the top of `backtester.py` (in the repo the Trader from `current_algo.py` is used). It might be easier to understand the changes needed to be made when going from the uploadable version to the local version to consider the file `no_trades_algo.py`.
+Now run
 ```bash
 python backtester.py
 ```
