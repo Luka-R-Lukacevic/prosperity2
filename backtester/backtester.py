@@ -1,4 +1,4 @@
-from current_algo import Trader
+from no_trades_algo import Trader
 
 from datamodel import *
 from typing import Any  #, Callable
@@ -181,7 +181,7 @@ def simulate_alternative(
         trader, 
         time_limit=999900, 
         names=True, 
-        halfway=False,
+        halfway=True,
         monkeys=False,
         monkey_names=['Caesar', 'Camilla', 'Peter']
     ):
