@@ -1,4 +1,4 @@
-from no_trades_algo import Trader
+from current_algo import Trader
 
 from datamodel import *
 from typing import Any  #, Callable
@@ -81,63 +81,84 @@ SYMBOLS_BY_ROUND_POSITIONABLE = {
 def process_prices(df_prices, round, time_limit) -> dict[int, TradingState]:
     states = {}
     for _, row in df_prices.iterrows():
-        time: int = int(row["timestamp"])
+        time = int(row["timestamp"])
         if time > time_limit:
             break
-        product: str = row["product"]
-        if states.get(time) == None:
-            position: Dict[Product, Position] = {}
-            own_trades: Dict[Symbol, List[Trade]] = {}
-            market_trades: Dict[Symbol, List[Trade]] = {}
-            observations: Dict[Product, Observation] = {}
-            listings = {}
-            depths = {}
-            states[time] = TradingState("", time, listings, depths, own_trades, market_trades, position, observations)
 
-        if product not in states[time].position and product in SYMBOLS_BY_ROUND_POSITIONABLE[round]:
-            states[time].position[product] = 0
-            states[time].own_trades[product] = []
-            states[time].market_trades[product] = []
+        product = row["product"]
+        state = states.setdefault(time, TradingState("", time, {}, {}, {}, {}, {}, {}))
 
-        states[time].listings[product] = Listing(product, product, "1")
+        if product not in state.position and product in SYMBOLS_BY_ROUND_POSITIONABLE[round]:
+            state.position[product] = 0
+            state.own_trades[product] = []
+            state.market_trades[product] = []
 
+        state.listings[product] = Listing(product, product, "1")
         if product == "DOLPHIN_SIGHTINGS":
-            states[time].observations["DOLPHIN_SIGHTINGS"] = row['mid_price']
-            
-        depth = OrderDepth()
-        if row["bid_price_1"]> 0:
-            depth.buy_orders[row["bid_price_1"]] = int(row["bid_volume_1"])
-        if row["bid_price_2"]> 0:
-            depth.buy_orders[row["bid_price_2"]] = int(row["bid_volume_2"])
-        if row["bid_price_3"]> 0:
-            depth.buy_orders[row["bid_price_3"]] = int(row["bid_volume_3"])
-        if row["ask_price_1"]> 0:
-            depth.sell_orders[row["ask_price_1"]] = -int(row["ask_volume_1"])
-        if row["ask_price_2"]> 0:
-            depth.sell_orders[row["ask_price_2"]] = -int(row["ask_volume_2"])
-        if row["ask_price_3"]> 0:
-            depth.sell_orders[row["ask_price_3"]] = -int(row["ask_volume_3"])
-        states[time].order_depths[product] = depth
+            state.observations["DOLPHIN_SIGHTINGS"] = row['mid_price']
+
+        depth = state.order_depths.setdefault(product, OrderDepth())
+
+        # Populating buy and sell orders ensuring price keys are integers
+        depth.buy_orders = {int(row[f"bid_price_{i}"]): int(row[f"bid_volume_{i}"])
+                            for i in range(1, 4) if row[f"bid_price_{i}"] > 0}
+
+        depth.sell_orders = {int(row[f"ask_price_{i}"]): -int(row[f"ask_volume_{i}"])
+                             for i in range(1, 4) if row[f"ask_price_{i}"] > 0}
 
     return states
+
+
+import random
 
 def process_trades(df_trades, states: dict[int, TradingState], time_limit, names=True):
     for _, trade in df_trades.iterrows():
-        time: int = trade['timestamp']
+        time = int(trade['timestamp'])
         if time > time_limit:
             break
+
         symbol = trade['symbol']
+        trade_quantity = trade['quantity']
+        trade_price = int(trade['price'])  # Convert trade price to integer
+
         if symbol not in states[time].market_trades:
             states[time].market_trades[symbol] = []
-        t = Trade(
-                symbol, 
-                trade['price'], 
-                trade['quantity'], 
-                str(trade['buyer']), 
-                str(trade['seller']),
-                time)
+        if symbol not in states[time].order_depths:
+            states[time].order_depths[symbol] = OrderDepth()
+
+        # Append the Trade object
+        t = Trade(symbol, trade_price, trade_quantity, str(trade['buyer']), str(trade['seller']), time)
         states[time].market_trades[symbol].append(t)
+
+        # Randomly decide whether to adjust the bid or ask price
+        adjust_price = random.choice(['bid', 'ask'])
+
+        # Update the order depth based on the trade
+        order_depth = states[time].order_depths[symbol]
+
+        if adjust_price == 'bid' and trade['seller']:
+            # Decrease bid price by 1 (making sure it's at least 1)
+            adjusted_bid_price = max(1, trade_price - 1)
+            order_depth.buy_orders[adjusted_bid_price] = order_depth.buy_orders.get(adjusted_bid_price, 0) + trade_quantity
+        elif adjust_price == 'ask' and trade['buyer']:
+            # Increase ask price by 1
+            adjusted_ask_price = trade_price + 1
+            order_depth.sell_orders[adjusted_ask_price] = order_depth.sell_orders.get(adjusted_ask_price, 0) - trade_quantity
+        else:
+            # No price adjustment, update order depth as usual
+            if trade['buyer']:
+                order_depth.sell_orders[trade_price] = order_depth.sell_orders.get(trade_price, 0) - trade_quantity
+            if trade['seller']:
+                order_depth.buy_orders[trade_price] = order_depth.buy_orders.get(trade_price, 0) + trade_quantity
+
     return states
+
+
+
+
+
+
+
        
 current_limits = {
     "AMETHYSTS":20,

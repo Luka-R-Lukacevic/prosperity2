@@ -75,9 +75,6 @@ class OrderDepth:
     def __init__(self):
         self.buy_orders: Dict[int, int] = {}
         self.sell_orders: Dict[int, int] = {}
-    
-    def __str__(self) -> str:
-        return str((self.buy_orders,self.sell_orders))
 
 
 class Trade:

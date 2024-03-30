@@ -1,50 +1,40 @@
-from typing import Any, List
+from datamodel import OrderDepth, UserId, TradingState, Order
+from typing import List
 import string
-import json
 import numpy as np
 import re
 
-from collections import OrderedDict
-
-from datamodel import Listing, Observation, Order, OrderDepth, ProsperityEncoder, Symbol, Trade, TradingState, UserId
+import json
+from datamodel import Listing, Observation, Order, OrderDepth, ProsperityEncoder, Symbol, Trade, TradingState
+from typing import Any
 
 import jsonpickle
 
 class TraderData:
-    def __init__(self, my_vol=0, trade_vol=0):
+    def __init__(self, my_vol=0, trade_vol=0, market={}, own={}):
         self.my_vol = my_vol
         self.trade_vol = trade_vol
-
+        self.market = market
+        self.own = own
 
 
 class Logger:
-    # Set this to true, if u want to create
-    # local logs
-    local: bool
-    # this is used as a buffer for logs
-    # instead of stdout
-    local_logs: dict[int, str] = {}
-
-    def __init__(self, local=False) -> None:
+    def __init__(self) -> None:
         self.logs = ""
-        self.local = local
 
     def print(self, *objects: Any, sep: str = " ", end: str = "\n") -> None:
         self.logs += sep.join(map(str, objects)) + end
 
-    def flush(self, state: TradingState, orders: dict[Symbol, list[Order]], trader_data: str) -> None:
-        output = json.dumps([
+    def flush(self, state: TradingState, orders: dict[Symbol, list[Order]], conversions: int, trader_data: str) -> None:
+        print(json.dumps([
             self.compress_state(state),
             self.compress_orders(orders),
+            conversions,
             trader_data,
             self.logs,
-        ], cls=ProsperityEncoder, separators=(",", ":"), sort_keys=False)
-        if self.local:
-            self.local_logs[state.timestamp] = output
+        ], cls=ProsperityEncoder, separators=(",", ":")))
 
         self.logs = ""
-
-
 
     def compress_state(self, state: TradingState) -> list[Any]:
         return [
@@ -61,17 +51,14 @@ class Logger:
     def compress_listings(self, listings: dict[Symbol, Listing]) -> list[list[Any]]:
         compressed = []
         for listing in listings.values():
-            compressed.append([listing.symbol, listing.product, int(listing.denomination)])
+            compressed.append([listing["symbol"], listing["product"], listing["denomination"]])
 
         return compressed
 
     def compress_order_depths(self, order_depths: dict[Symbol, OrderDepth]) -> dict[Symbol, list[Any]]:
         compressed = {}
         for symbol, order_depth in order_depths.items():
-            sorted_buy_keys = sorted(order_depth.buy_orders.keys(), key=lambda x: float(x), reverse=True)
-            ordered_buy = OrderedDict((int(key), order_depth.buy_orders[key]) for key in sorted_buy_keys)
-            sell = dict([(int(key), order_depth.sell_orders[key]) for key in order_depth.sell_orders.keys()])
-            compressed[symbol] = [dict(ordered_buy), sell]
+            compressed[symbol] = [order_depth.buy_orders, order_depth.sell_orders]
 
         return compressed
 
@@ -92,7 +79,18 @@ class Logger:
 
     def compress_observations(self, observations: Observation) -> list[Any]:
         conversion_observations = {}
-        return [observations, conversion_observations]
+        for product, observation in observations.conversionObservations.items():
+            conversion_observations[product] = [
+                observation.bidPrice,
+                observation.askPrice,
+                observation.transportFees,
+                observation.exportTariff,
+                observation.importTariff,
+                observation.sunlight,
+                observation.humidity,
+            ]
+
+        return [observations.plainValueObservations, conversion_observations]
 
     def compress_orders(self, orders: dict[Symbol, list[Order]]) -> list[list[Any]]:
         compressed = []
@@ -102,12 +100,11 @@ class Logger:
 
         return compressed
 
+logger = Logger()
 
 Limits = {"AMETHYSTS" : 20, "STARFRUIT" : 20}
 
-
 class Trader:
-    logger = Logger(local=True)
     def __init__(self):
         self.last5k = {key: [] for key in Limits}
 
@@ -121,11 +118,10 @@ class Trader:
             trader_data_obj = jsonpickle.decode(state.traderData)
             trade_vol = trader_data_obj.trade_vol
             my_vol = trader_data_obj.my_vol
-    
-        self.logger.print("traderData: " + state.traderData)
-        self.logger.print("Observations: " + str(state.observations))
+            
         result = {}
         for product in state.listings:
+
             
             Limit = Limits[product]
             if product not in state.market_trades.keys():
@@ -140,8 +136,8 @@ class Trader:
             if product in state.own_trades.keys():
                 my_trades: List[Trade] = state.own_trades[product]
                 for trade in my_trades:
-                    my_vol += 1#abs(trade.quantity)
-
+                    my_vol +=1#trade.quantity
+            
             #average price of last 5k timestamps
             volume = 0
             price = 0
@@ -171,8 +167,6 @@ class Trader:
 
             fair_value_regression = m*state.timestamp + c
 
-            self.logger.print("Fair price : " + str(fair_value_average))
-            self.logger.print("Fair price regression: " + str(fair_value_regression))
 
             if product == "AMETHYSTS": fair_value_regression = 10000
 
@@ -190,11 +184,13 @@ class Trader:
             orders.append(Order(product, ask, - Limit - state.position.get(product, 0)))
             
             result[product] = orders
-    
+
+        logger.print(state.market_trades)
+        logger.print(state.own_trades)
     
         trader_data_obj = TraderData(my_vol=my_vol, trade_vol=trade_vol)
         trader_data_json = jsonpickle.encode(trader_data_obj)
         
 
-        self.logger.flush(state, result, trader_data_json)
-        return result, trader_data_json
+        logger.flush(state, result, conversions, "")
+        return result, conversions, ""
