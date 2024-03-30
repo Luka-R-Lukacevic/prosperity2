@@ -97,15 +97,31 @@ class Logger:
 
 Limits = {"AMETHYSTS" : 20, "STARFRUIT" : 20}
 
-Indicators = ("market_sentiment", "middle_BB", "upper_BB", "lower_BB")
+Indicators = ("mid_price", "market_sentiment", "lower_BB", "middle_BB", "upper_BB", "RSI", "MACD")
 
 sep = ','
 
+# Parameters of modell and indicators
+Parameters = {"n_MA":       150, 
+              "n_mean_BB":  150, 
+              "n_sigma_BB": 150, 
+              "n_RSI":      150,
+              "n1_MACD":    100,
+              "n2_MACD":     40,
+              "alpha_MACD":  0.1}
+
+n = max(Parameters.values())
+
+def EMA(x, alpha):
+    if len(x) == 1:
+        return x[0]
+    return alpha*x[-1] + (1-alpha)*EMA(x[:-1], alpha)
 
 class Trader:
     logger = Logger(local=True)
     def __init__(self):
-        self.last5k = {key: [] for key in Limits}
+        self.history = {key: [] for key in Limits}
+
 
     def run(self, state: TradingState) -> tuple[dict[Symbol, list[Order]], int, str]:
         conversions = 0
@@ -136,33 +152,40 @@ class Trader:
             orders: List[Order] = []
 
             for trade in trades:
-                self.last5k[product].append(trade)
+                self.history[product].append(trade)
 
-            #average price of last 5k timestamps
+            # log value of last n timestamps
             volume = 0
             price = 0
 
-            for trade in self.last5k[product]:
-                if trade.timestamp + 15000 < state.timestamp:
-                    self.last5k[product].remove(trade)        
-                volume += abs(trade.quantity)
-                price += abs(trade.quantity) * trade.price
+            time_stamps = []
+            price_history = []
+
+            for trade in self.history[product]:
+                if trade.timestamp + n*100 < state.timestamp:
+                    self.history[product].remove(trade)   
+                    continue 
+
+                if trade.timestamp in time_stamps: 
+                    continue
+
+                trades_at_timestamp = [tr for tr in self.history[product] if tr.timestamp == trade.timestamp]
+                time_stamps.append(trade.timestamp)
+
+                price_at_timestamp = sum([tr.price for tr in trades_at_timestamp]) / len(trades_at_timestamp)
+                price_history.append(price_at_timestamp)
+
+                # calculate the weighted average for an approximation of the fair value (over all trades in the last n_MA timesteps)
+
+                if trade.timestamp + Parameters["n_MA"]*100 >= state.timestamp:
+                    volume += abs(trade.quantity)
+                    price += abs(trade.quantity) * trade.price
+
             fair_value_average = price / volume
 
             #regression
-            x = []
-            y = []
-
-            for trade in self.last5k[product]:
-                if trade.timestamp in x: 
-                    continue
-                trades_at_timestamp = [tr for tr in self.last5k[product] if tr.timestamp == trade.timestamp]
-                x.append(trade.timestamp)
-                price_at_timestamp = sum([tr.price for tr in trades_at_timestamp]) / len(trades_at_timestamp)
-                y.append(price_at_timestamp)
-
-            x = np.array(x)
-            y = np.array(y)
+            x = np.array(time_stamps)
+            y = np.array(price_history)
             A = np.vstack([x, np.ones(len(x))]).T
             m, c = np.linalg.lstsq(A, y, rcond=None)[0]
 
@@ -176,19 +199,40 @@ class Trader:
 
             ### indicators 
 
-            # shows if the market sentiment is bullish (> 1) or bearish (< 1)
+            # Current market value
+            mid_price = np.mean([tr.price for tr in trades]) if len(trades) != 0 else price_history[-1]
+
+            # Market sentiment -> shows if the market is bullish (> 1) or bearish (< 1)
             market_sentiment = len(order_depth.buy_orders)/(len(order_depth.buy_orders)+len(order_depth.sell_orders))
 
-            # Bollinger Bands
-            middle_BB = np.mean(y)
-            upper_BB = middle_BB + 2*np.var(y)
-            lower_BB = middle_BB - 2*np.var(y)
+            # Bollinger Bands (lower band, middle band aka MA, upper band)
+            middle_BB = np.mean(price_history[-Parameters["n_mean_BB"]:])   
+            upper_BB = middle_BB + 2*np.var(price_history[-Parameters["n_sigma_BB"]:])
+            lower_BB = middle_BB - 2*np.var(price_history[-Parameters["n_sigma_BB"]:])
+
+            # RSI (relative strength index)            
+            RSI_increments  = np.diff(price_history[-Parameters["n_RSI"]:])
+            sum_up = np.sum([max(val,0) for val in RSI_increments])
+            sum_down = np.sum([-min(val,0) for val in RSI_increments])
+
+            avg_up = np.mean(sum_up)
+            avg_down = np.mean(sum_down)
+            RSI = avg_up / (avg_up + avg_down) if avg_up + avg_down != 0 else 0
+
+            # MACD (moving average convergence/divergence)
+            EMA_1 =  EMA(price_history[-Parameters["n1_MACD"]:], Parameters["alpha_MACD"])
+            EMA_2 =  EMA(price_history[-Parameters["n2_MACD"]:], Parameters["alpha_MACD"])
+            MACD = EMA_2 - EMA_1
+
 
             # add indicators to trader data
+            trader_data += f'{round(mid_price,4)}{sep}'
             trader_data += f'{round(market_sentiment,4)}{sep}'
+            trader_data += f'{round(lower_BB,4)}{sep}'
             trader_data += f'{round(middle_BB,4)}{sep}'
             trader_data += f'{round(upper_BB,4)}{sep}'
-            trader_data += f'{round(lower_BB,4)}{sep}'
+            trader_data += f'{round(RSI,4)}{sep}'
+            trader_data += f'{round(MACD,6)}{sep}'
 
             # place orders
             bid = round(fair_value_regression) -2
