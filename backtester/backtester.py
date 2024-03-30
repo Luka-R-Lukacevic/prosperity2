@@ -1,4 +1,4 @@
-from current_algo import Trader
+from collect_indicators import Trader
 
 from datamodel import *
 from typing import Any  #, Callable
