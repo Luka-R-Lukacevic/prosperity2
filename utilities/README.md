@@ -60,3 +60,34 @@ To customize the script for your specific needs, you'll need to update the file 
 log_file_path = 'your_log_file_path.log'  # Update this to the path of your log file
 csv_file_path = 'your_output_csv_file.csv'  # Update this to your desired output CSV file path
 
+
+## ExtractPriceData.py
+
+### Output
+
+This script outputs a text file named `price_history.txt`, containing the extracted entries from the "Activities log:" section of the source log file. Each line in the output represents a single log entry, focusing on price-related activities.
+
+### Customization
+
+To use this script with your log files, you need to modify the source and target file paths at the beginning of the script:
+
+```python
+# Open the source log file
+with open("your_source_log_file.log", "r") as source_file:  # Update with your log file path
+    # Open (or create) the target txt file
+    with open("your_output_file.txt", "w") as target_file:  # Update with your desired output file path
+### Running the Script
+
+After customizing the file paths within the script to point to your specific log file and desired output file, follow these steps to run the script:
+
+1. Open a terminal or command prompt.
+2. Navigate to the directory where `ExtractPriceData.py` is located (should all be in utilities).
+3. Execute the script by entering the following command in the terminal:
+
+    ```bash
+    python ExtractPriceData.py
+    ```
+
+This command initiates the script, which then reads the specified log file, extracts the relevant price data from the "Activities log:" section, and writes this data to the output file you defined.
+
+
