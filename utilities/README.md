@@ -1,17 +1,16 @@
 # Technical Report on Trading Data Processing Scripts
 
-This README provides detailed technical insights into two Python scripts, `SaveIndicatorsToCSV.py` and `SaveTradeHistory.py`, focusing on their input requirements, output generation, and customization instructions for effective use.
+This README provides detailed technical insights into scripts, `SaveIndicatorsToCSV.py` and `SaveTradeHistory.py`, focusing on their input requirements, output generation, and customization instructions for effective use.
 
 ## SaveIndicatorsToCSV.py
 
 ### Functionality
 
-This script processes log files containing JSON entries to extract specific trading indicators encapsulated within "@" symbols in `lambdaLog` entries. It's designed to handle logs with structured JSON data where each entry potentially represents a set of trading indicators.
+This script processes the log files containing the output specified by the format of the visualizer agreed upon by Constantin and me to extract specific trading indicators encapsulated within "@" symbols.
 
 ### Input Expectations
 
-- **Log File Format**: The script expects a log file with JSON formatted entries. Each entry should contain a `lambdaLog` field with trading indicators listed between "@" symbols.
-- **Example Input**: `{"timestamp": "2023-03-30T12:00:00Z", "lambdaLog": "@mid_price,market_sentiment,...@"}`
+- **Log File**: Each entry should contain a `lambdaLog` field with trading indicators listed between "@" symbols.
 
 ### Output
 
@@ -41,7 +40,7 @@ Extracts trade history from log files, identifying sections marked by "Trade His
   ```plaintext
   ...other log content...
   Trade History: [
-    {"timestamp": "2023-03-30T12:00:00Z", "buyer": "TraderA", ...},
+    {"timestamp": "200", "buyer": "SUBMISSION", ...},
     ...
   ]
   ...subsequent log content...
