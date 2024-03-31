@@ -1,6 +1,6 @@
 # Technical Report on Trading Data Processing Scripts
 
-This README provides detailed technical insights into scripts, `SaveIndicatorsToCSV.py`, `SaveTradeHistory.py`, and `ExtracPriceData.py`, focusing on their input requirements, output generation, and customization instructions for effective use.
+This README provides detailed technical insights into scripts, `SaveIndicatorsToCSV.py`, `SaveTradeHistory.py`, and `ExtracPriceData.py`, focusing on their input requirements, output generation, and customization instructions for effective use. For convenience a log file to use as an example is already in this folder which should be processed by running the respective scripts.
 
 ## SaveIndicatorsToCSV.py
 
@@ -59,7 +59,7 @@ To customize the script for your specific needs, you'll need to update the file 
 ```python
 log_file_path = 'your_log_file_path.log'  # Update this to the path of your log file
 csv_file_path = 'your_output_csv_file.csv'  # Update this to your desired output CSV file path
-
+```
 
 ## ExtractPriceData.py
 
@@ -76,6 +76,8 @@ To use this script with your log files, you need to modify the source and target
 with open("your_source_log_file.log", "r") as source_file:  # Update with your log file path
     # Open (or create) the target txt file
     with open("your_output_file.txt", "w") as target_file:  # Update with your desired output file path
+```
+
 ### Running the Script
 
 After customizing the file paths within the script to point to your specific log file and desired output file, follow these steps to run the script:
