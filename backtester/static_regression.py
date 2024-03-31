@@ -105,12 +105,18 @@ sep = ','
 Parameters = {"n_MA":       50,  # time-span for MA
               "n_mean_BB":  50,  # time-span BB
               "n_sigma_BB": 50,  # time-span for sigma of BB
-              "n_RSI":      50,  # time-span for RSI
+              "n_RSI":      14,  # time-span for RSI
               "n1_MACD":    26,  # time-span for the first (longer) MACD EMA
               "n2_MACD":    12,  # time-span for the second (shorter) MACD EMA
               "days_ADX":   5,   # how many time steps to consider a "day" in ADX
               "n_ADX":      5,   # time-span for smoothing in ADX
-              "n_Model":    4
+              "n_Model":    2,    # time-span for smoothing the regression model
+              "Intercept":  -29.53989, # regression parameters
+              "coeff_MS":   -0.03916,
+              "coeff_BB":   0.83486,
+              "coeff_RSI":  2.72222,
+              "coeff_MACD": 0.13197,
+              "coeff_MP":   0.17064
               }
 
 n = max(Parameters.values())
@@ -124,7 +130,6 @@ def EMA(x, alpha):
 # Trying to implement ADX 
 
 """
-
 def smoothed(x, l):
     if len(x)<l:
         return [0]
@@ -218,7 +223,7 @@ class Trader:
             ### indicators 
 
             # Current market value
-            mid_price = np.mean([tr.price for tr in trades]) if len(trades) != 0 else price_history[-1]
+            mid_price = price_history[-1]
 
             # Market sentiment -> shows if the market is bullish (> 1) or bearish (< 1)
             market_sentiment = len(order_depth.buy_orders)/(len(order_depth.buy_orders)+len(order_depth.sell_orders))
@@ -246,7 +251,12 @@ class Trader:
 
 
             if product == "STARFRUIT":
-                self.regression_history[product].append(-83.38018 + 1.73501*market_sentiment + 0.12058*lower_BB + 0.89438*middle_BB + 18.41226*RSI -0.05367*MACD)
+                self.regression_history[product].append(Parameters["Intercept"] + Parameters["coeff_MS"]*market_sentiment + Parameters["coeff_BB"]*middle_BB + Parameters["coeff_RSI"]*RSI + Parameters["coeff_MACD"]*MACD + Parameters["coeff_MP"]*mid_price)
+                # Older regressions using more variables (also possibly good)...
+                # .append(-27.341845 -0.17*market_sentiment -0.004363*lower_BB + 0.800606*middle_BB + 0.066560*RSI + 0.204905*MACD + 0.209055*mid_price)
+                # .append(-26.76876 -0.17*market_sentiment -0.02954*lower_BB + 0.84520*middle_BB + 0.28838*RSI + 0.26612*MACD + 0.18943*mid_price)
+                # .append(-60.31162 -0.04426*market_sentiment + 0.09908*lower_BB + 0.91190*middle_BB + 13.02079*RSI + 0.20754*MACD)
+                # .append(-83.38018 + 1.73501*market_sentiment + 0.12058*lower_BB + 0.89438*middle_BB + 18.41226*RSI -0.05367*MACD)
                 fair_value_regression = np.mean(self.regression_history[product])
                 if(len(self.regression_history[product]) > Parameters["n_Model"]): self.regression_history[product].pop(0)        
 
@@ -263,22 +273,30 @@ class Trader:
 
 
             # place orders
-            bid = round(fair_value_regression) -2
-            ask = bid+4
+            bid = round(fair_value_regression) - 2 
+            ask = bid + 2
 
-            if (state.position.get(product, 0) / Limit > 0.5):
+            bid_volume_percentage = 1
+            ask_volume_percentage = 1
+
+            if(product == "STARFRUIT"):
+                bid_volume_percentage = 0.5 + 0.2*np.tanh(fair_value_regression - mid_price)
+                ask_volume_percentage = 0.5 + 0.2*np.tanh(mid_price - fair_value_regression)
+            
+            bid_volume = bid_volume_percentage*(Limit - state.position.get(product, 0))
+            ask_volume = ask_volume_percentage*(-Limit - state.position.get(product, 0))
+
+            if (state.position.get(product, 0) / Limit > 0.8):
                 bid -= 1
                 ask -= 1
-            if (state.position.get(product, 0) / Limit < -0.5):
+            if (state.position.get(product, 0) / Limit < -0.8):
                 bid += 1
                 ask += 1
 
-            orders.append(Order(product, bid, Limit - state.position.get(product, 0)))
-            orders.append(Order(product, ask, - Limit - state.position.get(product, 0)))
+            orders.append(Order(product, bid, bid_volume))
+            orders.append(Order(product, ask, ask_volume))
             
-            result[product] = orders
-    
-              
+            result[product] = orders               
 
         self.logger.flush(state, result, trader_data)
         return result, trader_data
