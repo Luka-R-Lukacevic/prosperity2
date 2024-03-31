@@ -1,6 +1,6 @@
 # Technical Report on Trading Data Processing Scripts
 
-This README provides detailed technical insights into scripts, `SaveIndicatorsToCSV.py` and `SaveTradeHistory.py`, focusing on their input requirements, output generation, and customization instructions for effective use.
+This README provides detailed technical insights into scripts, `SaveIndicatorsToCSV.py`, `SaveTradeHistory.py`, and `ExtracPriceData.py`, focusing on their input requirements, output generation, and customization instructions for effective use.
 
 ## SaveIndicatorsToCSV.py
 
