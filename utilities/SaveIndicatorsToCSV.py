@@ -49,7 +49,7 @@ def write_to_csv(lambda_logs, output_csv_path):
                 csvwriter.writerow(content[:len(Indicators)])
 
 # Path to the log file
-log_file_path = 'f278d666-a525-415f-945b-8633f75a604b.log'
+log_file_path = 'a9268cea-b0b8-4cfc-a751-baac3fad7a37.log'
 # Path to the output CSV file
 output_csv_path = 'Indicators.csv'
 

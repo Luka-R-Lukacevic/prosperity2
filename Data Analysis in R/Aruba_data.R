@@ -5,7 +5,8 @@ df1 <- read.csv(file_path1, sep=";", row.names = NULL)
 df2 <-read.csv(file_path2, sep=",")
 
 df_subset <- subset(df1, product == "STARFRUIT")
-df <- cbind(df_subset, df2)
+df <- cbind(df_subset[c(-1,-2),], df2)
+
 
 head(df)
 
