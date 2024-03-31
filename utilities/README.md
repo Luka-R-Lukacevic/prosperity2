@@ -1,30 +1,63 @@
-# Trading Data Processing Scripts
+# Technical Report on Trading Data Processing Scripts
 
-This repository contains two Python scripts designed for processing trading data from log files and saving specific information into CSV files.
+This README provides detailed technical insights into two Python scripts, `SaveIndicatorsToCSV.py` and `SaveTradeHistory.py`, focusing on their input requirements, output generation, and customization instructions for effective use.
 
-## Scripts
+## SaveIndicatorsToCSV.py
 
-### 1. SaveIndicatorsToCSV.py
+### Functionality
 
-This script extracts trading indicators from log files containing JSON entries and saves them into a CSV file.
+This script processes log files containing JSON entries to extract specific trading indicators encapsulated within "@" symbols in `lambdaLog` entries. It's designed to handle logs with structured JSON data where each entry potentially represents a set of trading indicators.
 
-#### Features
+### Input Expectations
 
-- Processes log files with trading indicators.
-- Targets specific indicators encapsulated between "@" symbols in `lambdaLog` entries.
-- Supported indicators include "mid_price", "market_sentiment", "lower_BB", "middle_BB", "upper_BB", "RSI", "MACD".
-- Saves extracted indicators to a CSV file.
+- **Log File Format**: The script expects a log file with JSON formatted entries. Each entry should contain a `lambdaLog` field with trading indicators listed between "@" symbols.
+- **Example Input**: `{"timestamp": "2023-03-30T12:00:00Z", "lambdaLog": "@mid_price,market_sentiment,...@"}`
 
-#### Usage
+### Output
 
-1. Specify the path to your log file and the desired output CSV file path in the script.
-2. Run the script to extract indicators and save them to the CSV file.
+- **CSV File**: The script outputs a CSV file where each row represents a set of trading indicators extracted from each `lambdaLog` entry.
+- **Columns**: The CSV will contain columns for each indicator specified in the script, such as "mid_price", "market_sentiment", "lower_BB", etc.
 
-#### Example
+### Customization
+
+To adapt the script to your specific use case, modify the following variables with your file paths:
 
 ```python
-log_file_path = 'path_to_your_log_file.log'  # Update with your log file path
-output_csv_path = 'Indicators.csv'  # Specify your output CSV file path
+log_file_path = 'path_to_your_log_file.log'  # Update with the actual path to your log file
+output_csv_path = 'Indicators.csv'  # Define where you want the output CSV to be saved
+```
 
-lambda_logs = process_log_file(log_file_path)
-write_to_csv(lambda_logs, output_csv_path)
+
+## SaveTradeHistory.py
+
+### Functionality
+
+Extracts trade history from log files, identifying sections marked by "Trade History:" and converting the data into CSV format.
+
+### Input Expectations
+
+- **Log File Format**: Expects a plain text file with trade history starting with "Trade History:", followed by JSON-formatted trade data enclosed in square brackets.
+
+  ```plaintext
+  ...other log content...
+  Trade History: [
+    {"timestamp": "2023-03-30T12:00:00Z", "buyer": "TraderA", ...},
+    ...
+  ]
+  ...subsequent log content...
+
+### Output
+
+The script generates a CSV file where each row corresponds to a trade transaction from the log. The CSV includes columns such as 'timestamp', 'buyer', 'seller', 'symbol', 'currency', 'price', and 'quantity', providing a structured and comprehensive view of the trade history.
+
+### Customization
+
+To customize the script for your specific needs, you'll need to update the file path variables within the script:
+
+- `log_file_path`: This should be set to the path of your log file that contains the trade history data.
+- `csv_file_path`: This should be set to the desired output path for the CSV file.
+
+```python
+log_file_path = 'your_log_file_path.log'  # Update this to the path of your log file
+csv_file_path = 'your_output_csv_file.csv'  # Update this to your desired output CSV file path
+
