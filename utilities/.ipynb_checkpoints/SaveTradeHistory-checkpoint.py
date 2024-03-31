@@ -52,7 +52,7 @@ def parse_and_write_trade_history(log_file_path, csv_file_path):
     print(f"CSV file created at {csv_file_path}")
 
 # Specify your log file path and the desired CSV file path
-log_file_path = 'f278d666-a525-415f-945b-8633f75a604b.log'  # Replace with your actual log file path
+log_file_path = 'be6cfd35-8f8c-4e9c-b675-2ad3ab4e7a7a.log'  # Replace with your actual log file path
 csv_file_path = 'prices_round_0_day_-2.csv'
 
 # Call the function with your file paths

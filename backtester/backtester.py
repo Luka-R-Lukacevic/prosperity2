@@ -1,4 +1,4 @@
-from collect_indicators import Trader
+from static_regression import Trader
 
 from datamodel import *
 from typing import Any  #, Callable

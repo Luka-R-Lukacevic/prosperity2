@@ -1,5 +1,5 @@
-file_path1 <- "csv.txt"
-file_path2 <- "output.csv"
+file_path1 <- "price_history.txt"
+file_path2 <- "Indicators.csv"
 
 df1 <- read.csv(file_path1, sep=";", row.names = NULL)
 df2 <-read.csv(file_path2, sep=",")
