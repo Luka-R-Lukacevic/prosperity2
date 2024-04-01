@@ -130,7 +130,7 @@ Parameters = {"n_MA":       50,  # time-span for MA
               "coeff_MP":   0.17064
               }
 
-n = max(Parameters.values())
+n = 150 #max(Parameters.values())
 
 def EMA(x, alpha):
     if len(x) == 1:
@@ -262,10 +262,12 @@ class Trader:
                 trader_data += f'{round(MACD,6)}{sep}'
                 trader_data += f'{round(fair_value_regression,4)}@'     
 
+            trader_data += f'- Length of price_history {len(price_history)} -'
+
 
             # place orders
-            bid = round(fair_value_regression) - 2 
-            ask = bid + 2
+            bid = round(fair_value_regression) - 2
+            ask = bid + 4
 
             bid_volume_percentage = 1
             ask_volume_percentage = 1
@@ -279,9 +281,9 @@ class Trader:
 
             if (state.position.get(product, 0) / Limit > 0.8):
                 bid -= 1
-                ask -= 1
+                #ask -= 1
             if (state.position.get(product, 0) / Limit < -0.8):
-                bid += 1
+                #bid += 1
                 ask += 1
 
             orders.append(Order(product, bid, bid_volume))

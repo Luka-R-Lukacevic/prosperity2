@@ -40,9 +40,8 @@ def parse_and_write_trade_history(log_file_path, csv_file_path):
 
         for trade in trades:
             # Check for "SUBMISSION" and replace it with an empty string
-            eraseUser = False
-            buyer = '' if (trade.get('buyer') == 'SUBMISSION' and eraseUser) else trade.get('buyer', '')
-            seller = '' if (trade.get('seller') == 'SUBMISSION' and eraseUser) else trade.get('seller', '')
+            buyer = '' if trade.get('buyer') == 'SUBMISSION' else trade.get('buyer', '')
+            seller = '' if trade.get('seller') == 'SUBMISSION' else trade.get('seller', '')
 
             writer.writerow([
                 trade['timestamp'],
@@ -58,7 +57,7 @@ def parse_and_write_trade_history(log_file_path, csv_file_path):
 
 
 # Specify your log file path and the desired CSV file path
-log_file_path = 'ebd24059-33bd-40d8-9d6e-269bbe480a7e.log'
+log_file_path = 'ee78fc46-bed6-4974-955f-800c7e3e40d2.log'
 csv_file_path = 'trades_round_0_day_-2_nn.csv'
 
 # Call the function with your file paths

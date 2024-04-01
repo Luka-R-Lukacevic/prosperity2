@@ -1,4 +1,4 @@
-from static_regression import Trader
+from static_regression_fixed_price_history import Trader
 
 from datamodel import *
 from typing import Any  #, Callable
@@ -120,36 +120,45 @@ def process_trades(df_trades, states: dict[int, TradingState], time_limit, names
         symbol = trade['symbol']
         trade_quantity = trade['quantity']
         trade_price = int(trade['price'])  # Convert trade price to integer
+        order_depth = states[time].order_depths[symbol]
 
         if symbol not in states[time].market_trades:
             states[time].market_trades[symbol] = []
         if symbol not in states[time].order_depths:
             states[time].order_depths[symbol] = OrderDepth()
 
-        # Append the Trade object
-        t = Trade(symbol, trade_price, trade_quantity, str(trade['buyer']), str(trade['seller']), time)
-        states[time].market_trades[symbol].append(t)
+        user_buyer = (str(trade['buyer']) == "SUBMISSION")
+        user_seller = (str(trade['seller']) == "SUBMISSION")
 
-        # Randomly decide whether to adjust the bid or ask price
+        if user_buyer:
+            t = Trade(symbol, trade_price, trade_quantity, None, str(trade['seller']), time)
+            states[time].market_trades[symbol].append(t)
+            order_depth.sell_orders[trade_price] = order_depth.sell_orders.get(trade_price, 0) -trade_quantity
+
+        if user_seller:
+            t = Trade(symbol, trade_price, trade_quantity, str(trade['buyer']), None, time)
+            states[time].market_trades[symbol].append(t)
+            order_depth.buy_orders[trade_price] = order_depth.buy_orders.get(trade_price, 0) + trade_quantity
+        else:
+            t = Trade(symbol, trade_price, trade_quantity, str(trade['buyer']), str(trade['seller']), time)
+            states[time].market_trades[symbol].append(t)
+
+        # Randomly decide whether to adjust the bid or ask price in case both are not the User
         adjust_price = random.choice(['bid', 'ask'])
 
-        # Update the order depth based on the trade
-        order_depth = states[time].order_depths[symbol]
-
-        if adjust_price == 'bid' and trade['seller']:
+        user = user_buyer or user_seller
+        
+        if adjust_price == 'bid' and not user:
             # Decrease bid price by 1 (making sure it's at least 1)
-            adjusted_bid_price = max(1, trade_price - 1)
+            adjusted_bid_price = trade_price - 1
             order_depth.buy_orders[adjusted_bid_price] = order_depth.buy_orders.get(adjusted_bid_price, 0) + trade_quantity
-        elif adjust_price == 'ask' and trade['buyer']:
+            order_depth.sell_orders[trade_price] = order_depth.sell_orders.get(trade_price, 0) -trade_quantity
+        
+        elif adjust_price == 'ask' and not user:
             # Increase ask price by 1
             adjusted_ask_price = trade_price + 1
             order_depth.sell_orders[adjusted_ask_price] = order_depth.sell_orders.get(adjusted_ask_price, 0) - trade_quantity
-        else:
-            # No price adjustment, update order depth as usual
-            if trade['buyer']:
-                order_depth.sell_orders[trade_price] = order_depth.sell_orders.get(trade_price, 0) - trade_quantity
-            if trade['seller']:
-                order_depth.buy_orders[trade_price] = order_depth.buy_orders.get(trade_price, 0) + trade_quantity
+            order_depth.buy_orders[trade_price] = order_depth.buy_orders.get(trade_price, 0) + trade_quantity
 
     return states
 
@@ -494,6 +503,7 @@ def create_log_file(round: int, day: int, states: dict[int, TradingState], profi
                                     }
                         f.write(json.dumps(log_entry, indent=2))
                         f.write("\n")
+                        #print(time, states[time].order_depths["AMETHYSTS"], states[time].order_depths["STARFRUIT"])
                         continue
             if time != 0:
                 f.write(f'{time}\n')

@@ -105,15 +105,21 @@ sep = ','
 Parameters = {"n_MA":       50,  # time-span for MA
               "n_mean_BB":  50,  # time-span BB
               "n_sigma_BB": 50,  # time-span for sigma of BB
-              "n_RSI":      50,  # time-span for RSI
+              "n_RSI":      14,  # time-span for RSI
               "n1_MACD":    26,  # time-span for the first (longer) MACD EMA
               "n2_MACD":    12,  # time-span for the second (shorter) MACD EMA
               "days_ADX":   5,   # how many time steps to consider a "day" in ADX
               "n_ADX":      5,   # time-span for smoothing in ADX
-              "n_Model":    4
+              "n_Model":    2,    # time-span for smoothing the regression model
+              "Intercept":  -29.53989, # regression parameters
+              "coeff_MS":   -0.03916,
+              "coeff_BB":   0.83486,
+              "coeff_RSI":  2.72222,
+              "coeff_MACD": 0.13197,
+              "coeff_MP":   0.17064
               }
 
-n = max(Parameters.values())
+n = max(Parameters.valuess())
 
 def EMA(x, alpha):
     if len(x) == 1:
@@ -124,7 +130,6 @@ def EMA(x, alpha):
 # Trying to implement ADX 
 
 """
-
 def smoothed(x, l):
     if len(x)<l:
         return [0]
@@ -171,87 +176,65 @@ class Trader:
             trades: List[Trade] = state.market_trades[product]
             orders: List[Order] = []
 
-            for trade in trades:
-                self.price_history[product].append(trade)
-
             # log value of last n timestamps
             volume = 0
             price = 0
 
-            time_stamps = []
-            price_history = []
+            if(len(trades) > 0):
+                price_at_timestamp = sum([tr.price for tr in trades]) / len(trades)
+                self.price_history[product].append(price_at_timestamp)
+            else:
+                self.price_history[product].append(self.price_history[product][-1])
 
-            for trade in self.price_history[product]:
-                if trade.timestamp + n*100 < state.timestamp:
-                    self.price_history[product].remove(trade)   
-                    continue 
-
-                if trade.timestamp in time_stamps: 
-                    continue
-
-                trades_at_timestamp = [tr for tr in self.price_history[product] if tr.timestamp == trade.timestamp]
-                time_stamps.append(trade.timestamp)
-
-                price_at_timestamp = sum([tr.price for tr in trades_at_timestamp]) / len(trades_at_timestamp)
-                price_history.append(price_at_timestamp)
-
-                # calculate the weighted average for an approximation of the fair value (over all trades in the last n_MA timesteps)
-
-                if trade.timestamp + Parameters["n_MA"]*100 >= state.timestamp:
-                    volume += abs(trade.quantity)
-                    price += abs(trade.quantity) * trade.price
-
-            fair_value_average = price / volume
-
-            #regression
-            x = np.array(time_stamps)
-            y = np.array(price_history)
-            A = np.vstack([x, np.ones(len(x))]).T
-            m, c = np.linalg.lstsq(A, y, rcond=None)[0]
-
-            fair_value_regression = m*state.timestamp + c
-
+            if(len( self.price_history[product]) > n): self.price_history[product].pop(0)
 
             if product == "AMETHYSTS": fair_value_regression = 10000
 
 
-            ### indicators 
-
-            # Current market value
-            mid_price = np.mean([tr.price for tr in trades]) if len(trades) != 0 else price_history[-1]
-
-            # Market sentiment -> shows if the market is bullish (> 1) or bearish (< 1)
-            market_sentiment = len(order_depth.buy_orders)/(len(order_depth.buy_orders)+len(order_depth.sell_orders))
-
-            # Bollinger Bands (lower band, middle band aka MA, upper band)
-            middle_BB = np.mean(price_history[-Parameters["n_mean_BB"]:])   
-            upper_BB = middle_BB + 2*np.var(price_history[-Parameters["n_sigma_BB"]:])
-            lower_BB = middle_BB - 2*np.var(price_history[-Parameters["n_sigma_BB"]:])
-
-            # RSI (relative strength index)            
-            RSI_increments  = np.diff(price_history[-Parameters["n_RSI"]:])
-            sum_up = np.sum([max(val,0) for val in RSI_increments])
-            sum_down = np.sum([-min(val,0) for val in RSI_increments])
-
-            avg_up = np.mean(sum_up)
-            avg_down = np.mean(sum_down)
-            RSI = avg_up / (avg_up + avg_down) if avg_up + avg_down != 0 else 0
-
-            # MACD (moving average convergence/divergence)
-            alpha_1 = 2/(Parameters["n1_MACD"]+1)
-            alpha_2 = 2/(Parameters["n2_MACD"]+1)
-            EMA_1 =  EMA(price_history[-Parameters["n1_MACD"]:], alpha_1)
-            EMA_2 =  EMA(price_history[-Parameters["n2_MACD"]:], alpha_2)
-            MACD = EMA_2 - EMA_1
-
+            ### indicators  
 
             if product == "STARFRUIT":
-                self.regression_history[product].append(-83.38018 + 1.73501*market_sentiment + 0.12058*lower_BB + 0.89438*middle_BB + 18.41226*RSI -0.05367*MACD)
+
+                price_history = self.price_history[product]
+
+                # Current market value
+                mid_price = price_history[-1]
+
+                # Market sentiment -> shows if the market is bullish (> 1) or bearish (< 1)
+                market_sentiment = len(order_depth.buy_orders)/(len(order_depth.buy_orders)+len(order_depth.sell_orders))
+
+                # Bollinger Bands (lower band, middle band aka MA, upper band)
+                middle_BB = np.mean(price_history[-Parameters["n_mean_BB"]:])   
+                upper_BB = middle_BB + 2*np.var(price_history[-Parameters["n_sigma_BB"]:])
+                lower_BB = middle_BB - 2*np.var(price_history[-Parameters["n_sigma_BB"]:])
+
+                # RSI (relative strength index)            
+                RSI_increments  = np.diff(price_history[-Parameters["n_RSI"]:])
+                sum_up = np.sum([max(val,0) for val in RSI_increments])
+                sum_down = np.sum([-min(val,0) for val in RSI_increments])
+
+                avg_up = np.mean(sum_up)
+                avg_down = np.mean(sum_down)
+                RSI = avg_up / (avg_up + avg_down) if avg_up + avg_down != 0 else 0
+
+                # MACD (moving average convergence/divergence)
+                alpha_1 = 2/(Parameters["n1_MACD"]+1)
+                alpha_2 = 2/(Parameters["n2_MACD"]+1)
+                EMA_1 =  EMA(price_history[-Parameters["n1_MACD"]:], alpha_1)
+                EMA_2 =  EMA(price_history[-Parameters["n2_MACD"]:], alpha_2)
+                MACD = EMA_2 - EMA_1
+            
+                self.regression_history[product].append(Parameters["Intercept"] + Parameters["coeff_MS"]*market_sentiment + Parameters["coeff_BB"]*middle_BB + Parameters["coeff_RSI"]*RSI + Parameters["coeff_MACD"]*MACD + Parameters["coeff_MP"]*mid_price)
+                # Older regressions using more variables (also possibly good)...
+                # .append(-27.341845 -0.17*market_sentiment -0.004363*lower_BB + 0.800606*middle_BB + 0.066560*RSI + 0.204905*MACD + 0.209055*mid_price)
+                # .append(-26.76876 -0.17*market_sentiment -0.02954*lower_BB + 0.84520*middle_BB + 0.28838*RSI + 0.26612*MACD + 0.18943*mid_price)
+                # .append(-60.31162 -0.04426*market_sentiment + 0.09908*lower_BB + 0.91190*middle_BB + 13.02079*RSI + 0.20754*MACD)
+                # .append(-83.38018 + 1.73501*market_sentiment + 0.12058*lower_BB + 0.89438*middle_BB + 18.41226*RSI -0.05367*MACD)
                 fair_value_regression = np.mean(self.regression_history[product])
                 if(len(self.regression_history[product]) > Parameters["n_Model"]): self.regression_history[product].pop(0)        
 
-            # add indicators to trader data
-            if product=="STARFRUIT":
+                # add indicators to trader data
+           
                 trader_data += f'{round(mid_price,4)}{sep}'
                 trader_data += f'{round(market_sentiment,4)}{sep}'
                 trader_data += f'{round(lower_BB,4)}{sep}'
@@ -263,22 +246,31 @@ class Trader:
 
 
             # place orders
-            bid = round(fair_value_regression) -2
-            ask = bid+4
+            bid = round(fair_value_regression) - 2 
+            ask = round(fair_value_regression) + 2 
 
-            if (state.position.get(product, 0) / Limit > 0.5):
+            bid_volume_percentage = 1
+            ask_volume_percentage = 1
+
+            if(product == "STARFRUIT"):
+                bid_volume_percentage = 0.5 + 0.2*np.tanh(fair_value_regression - mid_price)
+                ask_volume_percentage = 0.5 + 0.2*np.tanh(mid_price - fair_value_regression)
+            
+            bid_volume = int(bid_volume_percentage*(Limit - state.position.get(product, 0)))
+            ask_volume = int(ask_volume_percentage*(-Limit - state.position.get(product, 0)))
+
+            if (state.position.get(product, 0) / Limit > 0.8):
                 bid -= 1
                 ask -= 1
-            if (state.position.get(product, 0) / Limit < -0.5):
+            if (state.position.get(product, 0) / Limit < -0.8):
                 bid += 1
                 ask += 1
-
-            orders.append(Order(product, bid, Limit - state.position.get(product, 0)))
-            orders.append(Order(product, ask, - Limit - state.position.get(product, 0)))
             
-            result[product] = orders
-    
-              
+
+            orders.append(Order(product, bid, bid_volume))
+            orders.append(Order(product, ask, ask_volume))
+            
+            result[product] = orders               
 
         self.logger.flush(state, result, trader_data)
         return result, trader_data
