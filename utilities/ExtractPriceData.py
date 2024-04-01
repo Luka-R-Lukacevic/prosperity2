@@ -1,5 +1,5 @@
 # Open the source log file
-with open("d2929ed5-30ac-49a1-9fd3-9deaba6c3c3f.log", "r") as source_file:
+with open("ee78fc46-bed6-4974-955f-800c7e3e40d2.log", "r") as source_file:
     # Open (or create) the target txt file
     with open("price_history.txt", "w") as target_file:
         # Variable to track whether the "Activities log:" section has been found
