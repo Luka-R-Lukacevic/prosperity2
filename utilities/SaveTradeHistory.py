@@ -4,7 +4,7 @@ import json
 def parse_and_write_trade_history(log_file_path, csv_file_path):
     """
     Parses trade history from a given log file starting from the line "Trade History:"
-    and writes the trades to a CSV file.
+    and writes the trades to a CSV file, leaving the buyer or seller field empty if the value is "SUBMISSION".
 
     Parameters:
     log_file_path (str): The path to the log file containing the trade history.
@@ -39,10 +39,14 @@ def parse_and_write_trade_history(log_file_path, csv_file_path):
         writer.writerow(['timestamp', 'buyer', 'seller', 'symbol', 'currency', 'price', 'quantity'])
 
         for trade in trades:
+            # Check for "SUBMISSION" and replace it with an empty string
+            buyer = '' if trade.get('buyer') == 'SUBMISSION' else trade.get('buyer', '')
+            seller = '' if trade.get('seller') == 'SUBMISSION' else trade.get('seller', '')
+
             writer.writerow([
                 trade['timestamp'],
-                trade.get('buyer', ''),
-                trade.get('seller', ''),
+                buyer,
+                seller,
                 trade['symbol'],
                 trade['currency'],
                 float(trade['price']),
@@ -51,9 +55,12 @@ def parse_and_write_trade_history(log_file_path, csv_file_path):
 
     print(f"CSV file created at {csv_file_path}")
 
+
 # Specify your log file path and the desired CSV file path
-log_file_path = 'a9268cea-b0b8-4cfc-a751-baac3fad7a37.log'  # Replace with your actual log file path
-csv_file_path = 'prices_round_0_day_-2.csv'
+log_file_path = 'd2929ed5-30ac-49a1-9fd3-9deaba6c3c3f.log'
+csv_file_path = 'trades_round_0_day_-2_nn.csv'
 
 # Call the function with your file paths
 parse_and_write_trade_history(log_file_path, csv_file_path)
+
+

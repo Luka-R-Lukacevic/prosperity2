@@ -283,8 +283,8 @@ class Trader:
                 bid_volume_percentage = 0.5 + 0.2*np.tanh(fair_value_regression - mid_price)
                 ask_volume_percentage = 0.5 + 0.2*np.tanh(mid_price - fair_value_regression)
             
-            bid_volume = bid_volume_percentage*(Limit - state.position.get(product, 0))
-            ask_volume = ask_volume_percentage*(-Limit - state.position.get(product, 0))
+            bid_volume = int(bid_volume_percentage*(Limit - state.position.get(product, 0)))
+            ask_volume = int(ask_volume_percentage*(-Limit - state.position.get(product, 0)))
 
             if (state.position.get(product, 0) / Limit > 0.8):
                 bid -= 1
