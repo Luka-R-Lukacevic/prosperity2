@@ -42,7 +42,12 @@ def write_to_csv(lambda_logs, output_csv_path):
         csvwriter = csv.writer(csvfile)
         csvwriter.writerow(Indicators)  # Write headers
 
-        for log in lambda_logs:
+        for log in lambda_logs[2:]:
+            # Something is wrong with the first two rows?
+            # They look like this: 
+            # []
+            # ['"', '[["STARFRUIT"', '"STARFRUIT"', '1]', '["AMETHYSTS"', '"AMETHYSTS"', '1]]', '{"AMETHYSTS":[{"9996":2', '"9995":22}', '{"10004":-2', '"10005":-22}]', '"STARFRUIT":[{"4997":24}', '{"5003":-2', '"5004":-22}]}', '[]', '[["STARFRUIT"', '5003.0', '13', '""', '""', '0]', '["STARFRUIT"', '5003.0', '1', '""', '""', '0]', '["AMETHYSTS"', '10004.0', '1', '""', '""', '0]]', '{}', '[{}', '{}]]', '[["AMETHYSTS"', '9998', '20]', '["AMETHYSTS"', '10002', '-20]', '["STARFRUIT"', '5001', '20]', '["STARFRUIT"', '5005', '-20]]', 'null', '"']
+
             content = extract_first_lambda_log_content(log)
             if content:
                 # Write indicator values

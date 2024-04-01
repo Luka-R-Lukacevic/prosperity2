@@ -1,8 +1,8 @@
-file_path <- ".\\Indicators\\Indicators.csv"
+file_path <- "Indicators.csv"
 k <- 20
 offset <- 5
 
-df <- read.csv(file_path, sep=",", row.names = NULL)
+df <- read.csv(file_path, sep=",", row.names = NULL, header=FALSE)
 head(df)
 
 
@@ -13,6 +13,7 @@ forward_smoothed <- foward_ma(df$mid_price, k = k, offset = offset)
 
 y <- forward_smoothed
 
+lr_df
 
 model <-lm(y~., data=lr_df)
 summary(model)
