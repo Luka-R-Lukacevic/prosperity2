@@ -159,7 +159,9 @@ def process_trades(df_trades, states: dict[int, TradingState], time_limit, names
             adjusted_ask_price = trade_price + 1
             order_depth.sell_orders[adjusted_ask_price] = order_depth.sell_orders.get(adjusted_ask_price, 0) - trade_quantity
             order_depth.buy_orders[trade_price] = order_depth.buy_orders.get(trade_price, 0) + trade_quantity
-
+        
+        order_depth.buy_orders = dict(sorted(order_depth.buy_orders.items(), key=lambda item: item[0], reverse=True))
+        order_depth.sell_orders = dict(sorted(order_depth.sell_orders.items(), key=lambda item: item[0], reverse=False))
     return states
 
 
@@ -407,73 +409,79 @@ def monkey_positions(monkey_names: list[str], states: dict[int, TradingState], r
 
 
 def cleanup_order_volumes(org_orders: List[Order]) -> List[Order]:
-    orders = []
-    for order_1 in org_orders:
-        final_order = copy.copy(order_1)
-        for order_2 in org_orders:
-            if order_1.price == order_2.price and order_1.quantity == order_2.quantity:
-               continue 
-            if order_1.price == order_2.price:
-                final_order.quantity += order_2.quantity
-        orders.append(final_order)
-    return orders
+    orders = {}
+    for order in org_orders:
+        if order.price in orders:
+            orders[order.price].quantity += order.quantity
+        else:
+            orders[order.price] = copy.copy(order)
+    return list(orders.values())
 
-def clear_order_book(trader_orders: dict[str, List[Order]], order_depth: dict[str, OrderDepth], time: int, halfway: bool) -> list[Trade]:
+def match_and_update_order_depth(order, symbol_order_depth, order_type):
+    #print(order, symbol_order_depth, order_type, 123)
+    # Convert prices to int and filter potential matches based on the order type
+    potential_matches = {int(k): v for k, v in (symbol_order_depth.buy_orders if order_type == 'sell' else symbol_order_depth.sell_orders).items()}
+    price_check = lambda p: p >= order.price if order_type == 'sell' else p <= order.price
+    potential_prices = [price for price in potential_matches if price_check(price)]
+
+    # Handle case where there are no matching prices
+    if not potential_prices:
+        return None, 0
+
+    # Determine the best price for trade and calculate trade volume
+    best_price = max(potential_prices) if order_type == 'sell' else min(potential_prices)
+    match_qty = potential_matches[best_price]
+    trade_volume = min(abs(order.quantity), abs(match_qty))
+    if order_type == 'sell':
+        trade_volume = -trade_volume  # Make volume negative for sell orders
+
+    # Update the order depth with the matched trade
+    potential_matches[best_price] += trade_volume
+    if potential_matches[best_price] == 0:  # Remove the price level if quantity becomes 0
+        del potential_matches[best_price]
+
+    # Update the original order depth with modified values
+    if order_type == 'sell':
+        symbol_order_depth.buy_orders = potential_matches
+    else:
+        symbol_order_depth.sell_orders = potential_matches
+    #print(order, symbol_order_depth, order_type,456)
+    return best_price, trade_volume
+
+
+def clear_order_book(trader_orders, order_depth, time, halfway):
     trades = []
+    #print(time, "Orders: ", trader_orders)
     for symbol, orders in trader_orders.items():
         if symbol in order_depth:
             symbol_order_depth = copy.deepcopy(order_depth[symbol])
-            new_sell_orders = {int(price): qty for price, qty in symbol_order_depth.sell_orders.items()}
-            symbol_order_depth.sell_orders = new_sell_orders
-            new_buy_orders = {int(price): qty for price, qty in symbol_order_depth.buy_orders.items()}
-            symbol_order_depth.buy_orders = new_buy_orders
+            cleaned_orders = cleanup_order_volumes(copy.deepcopy(orders))
+            #print(cleaned_orders, symbol_order_depth)
+            while cleaned_orders:
+                #print("cleaned_orders new round")
+                order = cleaned_orders[0]  # Always work with the first order in the list
+                order_type = 'sell' if order.quantity < 0 else 'buy'
+                #print("order, order_depth, order type",order, symbol_order_depth, order_type)
+                best_price, trade_volume = match_and_update_order_depth(order, symbol_order_depth, order_type)
+                #print("best price and vol",best_price, trade_volume)
+                if best_price is not None:
+                    trades.append(Trade(symbol, best_price, trade_volume, "YOU" if order_type == "buy" else "BOT", "BOT" if order_type == "buy" else "YOU", time))
+                    
+                    adjusted_quantity = order.quantity - trade_volume
 
-            for order in orders:
-                unmatched_quantity = order.quantity
-                
-                previous_unmatched_quantity = None  # Track the quantity from the previous loop iteration
-                while unmatched_quantity != 0 and (unmatched_quantity != previous_unmatched_quantity):
-                    adjusted_price = order.price
-
-                    if unmatched_quantity < 0:  # Handling sell orders
-                        potential_buys = {price: qty for price, qty in symbol_order_depth.buy_orders.items() if float(price) >= order.price}
-                        if potential_buys:
-                            highest_buy_price = max(potential_buys.keys(), key=lambda x: float(x))
-                            adjusted_price = highest_buy_price
-                            potential_matches = [(price, qty) for price, qty in symbol_order_depth.buy_orders.items() if float(price) == adjusted_price]
-                        else:
-                            potential_matches = []
-
-                    elif unmatched_quantity > 0:  # Handling buy orders
-                        potential_sells = {price: qty for price, qty in symbol_order_depth.sell_orders.items() if float(price) <= order.price}
-                        if potential_sells:
-                            lowest_sell_price = min(potential_sells.keys(), key=lambda x: float(x))
-                            adjusted_price = lowest_sell_price
-                            potential_matches = [(price, qty) for price, qty in symbol_order_depth.sell_orders.items() if float(price) == adjusted_price]
-                        else:
-                            potential_matches = []
-                    if potential_matches:
-                        match_price, match_qty = potential_matches[0]
-                        trade_volume = min(abs(unmatched_quantity), abs(match_qty))
-                        if unmatched_quantity < 0:  # For sell orders
-                            trade_volume = -trade_volume  # Ensure the trade volume is negative
-                        trades.append(Trade(symbol, float(match_price), trade_volume, "YOU" if unmatched_quantity > 0 else "BOT", "BOT" if unmatched_quantity > 0 else "YOU", time))
-                        if unmatched_quantity < 0:
-                            if unmatched_quantity <= trade_volume:
-                                symbol_order_depth.buy_orders.pop(match_price)
-                            else:
-                                symbol_order_depth.buy_orders[match_price] = abs(match_qty) - abs(unmatched_quantity)
-                        else:
-                            if trade_volume == unmatched_quantity:
-                                symbol_order_depth.sell_orders.pop(match_price)
-                            else:
-                                symbol_order_depth.sell_orders[match_price] = abs(match_qty) - abs(unmatched_quantity)
-                        previous_unmatched_quantity = unmatched_quantity
-                        unmatched_quantity -= trade_volume
+                    # If the order is fully matched or there's no more quantity to match, remove it from the list
+                    if adjusted_quantity == 0:
+                        cleaned_orders.pop(0)
                     else:
-                        break
+                        order.quantity = adjusted_quantity
+                else:
+                    cleaned_orders.pop(0)
+                #print(cleaned_orders, "HElllouu")
 
     return trades
+
+
+
 
 
 
@@ -503,7 +511,6 @@ def create_log_file(round: int, day: int, states: dict[int, TradingState], profi
                                     }
                         f.write(json.dumps(log_entry, indent=2))
                         f.write("\n")
-                        #print(time, states[time].order_depths["AMETHYSTS"], states[time].order_depths["STARFRUIT"])
                         continue
             if time != 0:
                 f.write(f'{time}\n')

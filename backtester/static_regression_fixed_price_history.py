@@ -60,12 +60,13 @@ class Logger:
     def compress_order_depths(self, order_depths: dict[Symbol, OrderDepth]) -> dict[Symbol, list[Any]]:
         compressed = {}
         for symbol, order_depth in order_depths.items():
-            sorted_buy_keys = sorted(order_depth.buy_orders.keys(), key=lambda x: float(x), reverse=True)
-            ordered_buy = OrderedDict((int(key), order_depth.buy_orders[key]) for key in sorted_buy_keys)
-            sell = dict([(int(key), order_depth.sell_orders[key]) for key in order_depth.sell_orders.keys()])
-            compressed[symbol] = [dict(ordered_buy), sell]
-
+            # Selecting only the first three entries for both buy and sell orders
+            compressed_buy_orders = dict(list(order_depth.buy_orders.items())[:3])
+            compressed_sell_orders = dict(list(order_depth.sell_orders.items())[:3])
+    
+            compressed[symbol] = [compressed_buy_orders, compressed_sell_orders]
         return compressed
+
 
     def compress_trades(self, trades: dict[Symbol, list[Trade]]) -> list[list[Any]]:
         compressed = []
