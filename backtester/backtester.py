@@ -131,14 +131,16 @@ def process_trades(df_trades, states: dict[int, TradingState], time_limit, names
         user_seller = (str(trade['seller']) == "SUBMISSION")
 
         if user_buyer:
-            t = Trade(symbol, trade_price, trade_quantity, None, str(trade['seller']), time)
-            states[time].market_trades[symbol].append(t)
-            order_depth.sell_orders[trade_price] = order_depth.sell_orders.get(trade_price, 0) -trade_quantity
+            #t = Trade(symbol, trade_price, trade_quantity, None, str(trade['seller']), time)
+            #states[time].market_trades[symbol].append(t)
+            if order_depth.sell_orders.get(trade_price, 0) ==0:
+                order_depth.sell_orders[trade_price] = order_depth.sell_orders.get(trade_price, 0)-trade_quantity
 
         if user_seller:
-            t = Trade(symbol, trade_price, trade_quantity, str(trade['buyer']), None, time)
-            states[time].market_trades[symbol].append(t)
-            order_depth.buy_orders[trade_price] = order_depth.buy_orders.get(trade_price, 0) + trade_quantity
+            #t = Trade(symbol, trade_price, trade_quantity, str(trade['buyer']), None, time)
+            #states[time].market_trades[symbol].append(t)
+            if order_depth.buy_orders.get(trade_price, 0) ==0:
+                order_depth.buy_orders[trade_price] = order_depth.buy_orders.get(trade_price, 0) + trade_quantity
         else:
             t = Trade(symbol, trade_price, trade_quantity, str(trade['buyer']), str(trade['seller']), time)
             states[time].market_trades[symbol].append(t)
