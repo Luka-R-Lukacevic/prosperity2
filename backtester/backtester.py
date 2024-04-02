@@ -1,4 +1,4 @@
-from static_regression_fixed_price_history import Trader
+from old_algo_JG import Trader
 
 from datamodel import *
 from typing import Any  #, Callable
