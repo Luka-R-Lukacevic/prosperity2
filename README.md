@@ -1,6 +1,6 @@
 ### Git Fork Workflow with Specific Repositories
 
-This guide outlines how to manage forks and synchronize changes using two specific GitHub repositories as examples.
+This guide outlines how to manage forks and synchronize changes for our specific repos.
 
 #### Cloning the Fork
 
