@@ -2,6 +2,7 @@ import copy
 import json
 import math
 import random
+import jsonpickle
 import statistics as stat
 import collections
 from collections import defaultdict
@@ -151,14 +152,14 @@ class Trader:
     std = 25
     basket_std = 117
 
-    def calc_next_price_starfruit(self):
+    def calc_next_price_starfruit(self, cache):
         # starfruit cache stores price from 1 day ago, current day resp
         # by price, here we mean mid price
 
         coef = [-0.01869561,  0.0455032 ,  0.16316049,  0.8090892]
         intercept = 4.481696494462085
         nxt_price = intercept
-        for i, val in enumerate(self.starfruit_cache):
+        for i, val in enumerate(cache):
             nxt_price += val * coef[i]
 
         return int(round(nxt_price))
@@ -314,7 +315,11 @@ class Trader:
         """
         # Initialize the method output dict as an empty dict
         result = {'AMETHYSTS' : [], 'STARFRUIT' : []}
-
+        new_starfruit_cache = []
+        if state.traderData:
+            new_starfruit_cache = jsonpickle.decode(state.traderData)
+        
+        
         # Iterate over all the keys (the available products) contained in the order dephts
         for key, val in state.position.items():
             self.position[key] = val
@@ -325,10 +330,8 @@ class Trader:
 
         timestamp = state.timestamp
 
-        if len(self.starfruit_cache) == self.starfruit_dim:
-            self.starfruit_cache.pop(0)
-        if len(self.coconuts_cache) == self.coconuts_dim:
-            self.coconuts_cache.pop(0)
+        if len(new_starfruit_cache) == self.starfruit_dim:
+            new_starfruit_cache.pop(0)
 
         _, bs_starfruit = self.values_extract(collections.OrderedDict(sorted(state.order_depths['STARFRUIT'].sell_orders.items())))
         _, bb_starfruit = self.values_extract(collections.OrderedDict(sorted(state.order_depths['STARFRUIT'].buy_orders.items(), reverse=True)), 1)
@@ -341,16 +344,16 @@ class Trader:
         starfruit_ub = INF
 
         if len(self.starfruit_cache) == self.starfruit_dim:
-            starfruit_lb = self.calc_next_price_starfruit()-1
-            starfruit_ub = self.calc_next_price_starfruit()+1
+            starfruit_lb = self.calc_next_price_starfruit(new_starfruit_cache)-1
+            starfruit_ub = self.calc_next_price_starfruit(new_starfruit_cache)+1
 
         amethysts_lb = 10000
         amethysts_ub = 10000
 
         # CHANGE FROM HERE
 
-        acc_bid = {'AMETHYSTS' : amethysts_lb, 'STARFRUIT' : starfruit_lb} # we want to buy at slightly below
-        acc_ask = {'AMETHYSTS' : amethysts_ub, 'STARFRUIT' : starfruit_ub} # we want to sell at slightly above
+        acc_bid = {'AMETHYSTS' : amethysts_lb, 'STARFRUIT' : int(starfruit_lb)} # we want to buy at slightly below
+        acc_ask = {'AMETHYSTS' : amethysts_ub, 'STARFRUIT' : int(starfruit_ub)} # we want to sell at slightly above
 
         self.steps += 1
 
@@ -401,5 +404,7 @@ class Trader:
         # logger.print(f'Will trade {result}')
         logger.print("End transmission")
 
-        logger.flush(state, result, None, "")
-        return result, None, ""
+        trader_data = jsonpickle.encode(new_starfruit_cache)
+
+        logger.flush(state, result, None, trader_data)
+        return result, None, trader_data
