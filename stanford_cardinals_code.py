@@ -401,5 +401,5 @@ class Trader:
         # logger.print(f'Will trade {result}')
         logger.print("End transmission")
 
-        logger.flush(state, total_transmittable_orders, None, "")
+        logger.flush(state, result, None, "")
         return result, None, ""
