@@ -7,7 +7,7 @@ import math
 import copy
 import numpy as np
 
-empty_dict = {'PEARLS' : 0, 'BANANAS' : 0, 'COCONUTS' : 0, 'PINA_COLADAS' : 0, 'BERRIES' : 0, 'DIVING_GEAR' : 0, 'DIP' : 0, 'BAGUETTE': 0, 'UKULELE' : 0, 'PICNIC_BASKET' : 0}
+empty_dict = {'AMETHYSTS' : 0, 'STARFRUIT' : 0, 'COCONUTS' : 0, 'PINA_COLADAS' : 0, 'BERRIES' : 0, 'DIVING_GEAR' : 0, 'DIP' : 0, 'BAGUETTE': 0, 'UKULELE' : 0, 'PICNIC_BASKET' : 0}
 
 
 def def_value():
@@ -18,16 +18,16 @@ INF = int(1e9)
 class Trader:
 
     position = copy.deepcopy(empty_dict)
-    POSITION_LIMIT = {'PEARLS' : 20, 'BANANAS' : 20, 'COCONUTS' : 600, 'PINA_COLADAS' : 300, 'BERRIES' : 250, 'DIVING_GEAR' : 50, 'DIP' : 300, 'BAGUETTE': 150, 'UKULELE' : 70, 'PICNIC_BASKET' : 70}
+    POSITION_LIMIT = {'AMETHYSTS' : 20, 'STARFRUIT' : 20, 'COCONUTS' : 600, 'PINA_COLADAS' : 300, 'BERRIES' : 250, 'DIVING_GEAR' : 50, 'DIP' : 300, 'BAGUETTE': 150, 'UKULELE' : 70, 'PICNIC_BASKET' : 70}
     volume_traded = copy.deepcopy(empty_dict)
 
     person_position = defaultdict(def_value)
     person_actvalof_position = defaultdict(def_value)
 
     cpnl = defaultdict(lambda : 0)
-    bananas_cache = []
+    starfruit_cache = []
     coconuts_cache = []
-    bananas_dim = 4
+    starfruit_dim = 4
     coconuts_dim = 3
     steps = 0
     last_dolphins = -1
@@ -59,14 +59,14 @@ class Trader:
     std = 25
     basket_std = 117
 
-    def calc_next_price_bananas(self):
-        # bananas cache stores price from 1 day ago, current day resp
+    def calc_next_price_starfruit(self):
+        # starfruit cache stores price from 1 day ago, current day resp
         # by price, here we mean mid price
 
         coef = [-0.01869561,  0.0455032 ,  0.16316049,  0.8090892]
         intercept = 4.481696494462085
         nxt_price = intercept
-        for i, val in enumerate(self.bananas_cache):
+        for i, val in enumerate(self.starfruit_cache):
             nxt_price += val * coef[i]
 
         return int(round(nxt_price))
@@ -88,7 +88,7 @@ class Trader:
     
 
 
-    def compute_orders_pearls(self, product, order_depth, acc_bid, acc_ask):
+    def compute_orders_amethysts(self, product, order_depth, acc_bid, acc_ask):
         orders: list[Order] = []
 
         osell = collections.OrderedDict(sorted(order_depth.sell_orders.items()))
@@ -102,9 +102,9 @@ class Trader:
         mx_with_buy = -1
 
         for ask, vol in osell.items():
-            if ((ask < acc_bid) or ((self.position[product]<0) and (ask == acc_bid))) and cpos < self.POSITION_LIMIT['PEARLS']:
+            if ((ask < acc_bid) or ((self.position[product]<0) and (ask == acc_bid))) and cpos < self.POSITION_LIMIT['AMETHYSTS']:
                 mx_with_buy = max(mx_with_buy, ask)
-                order_for = min(-vol, self.POSITION_LIMIT['PEARLS'] - cpos)
+                order_for = min(-vol, self.POSITION_LIMIT['AMETHYSTS'] - cpos)
                 cpos += order_for
                 assert(order_for >= 0)
                 orders.append(Order(product, ask, order_for))
@@ -118,43 +118,43 @@ class Trader:
         bid_pr = min(undercut_buy, acc_bid-1) # we will shift this by 1 to beat this price
         sell_pr = max(undercut_sell, acc_ask+1)
 
-        if (cpos < self.POSITION_LIMIT['PEARLS']) and (self.position[product] < 0):
-            num = min(40, self.POSITION_LIMIT['PEARLS'] - cpos)
+        if (cpos < self.POSITION_LIMIT['AMETHYSTS']) and (self.position[product] < 0):
+            num = min(40, self.POSITION_LIMIT['AMETHYSTS'] - cpos)
             orders.append(Order(product, min(undercut_buy + 1, acc_bid-1), num))
             cpos += num
 
-        if (cpos < self.POSITION_LIMIT['PEARLS']) and (self.position[product] > 15):
-            num = min(40, self.POSITION_LIMIT['PEARLS'] - cpos)
+        if (cpos < self.POSITION_LIMIT['AMETHYSTS']) and (self.position[product] > 15):
+            num = min(40, self.POSITION_LIMIT['AMETHYSTS'] - cpos)
             orders.append(Order(product, min(undercut_buy - 1, acc_bid-1), num))
             cpos += num
 
-        if cpos < self.POSITION_LIMIT['PEARLS']:
-            num = min(40, self.POSITION_LIMIT['PEARLS'] - cpos)
+        if cpos < self.POSITION_LIMIT['AMETHYSTS']:
+            num = min(40, self.POSITION_LIMIT['AMETHYSTS'] - cpos)
             orders.append(Order(product, bid_pr, num))
             cpos += num
         
         cpos = self.position[product]
 
         for bid, vol in obuy.items():
-            if ((bid > acc_ask) or ((self.position[product]>0) and (bid == acc_ask))) and cpos > -self.POSITION_LIMIT['PEARLS']:
-                order_for = max(-vol, -self.POSITION_LIMIT['PEARLS']-cpos)
+            if ((bid > acc_ask) or ((self.position[product]>0) and (bid == acc_ask))) and cpos > -self.POSITION_LIMIT['AMETHYSTS']:
+                order_for = max(-vol, -self.POSITION_LIMIT['AMETHYSTS']-cpos)
                 # order_for is a negative number denoting how much we will sell
                 cpos += order_for
                 assert(order_for <= 0)
                 orders.append(Order(product, bid, order_for))
 
-        if (cpos > -self.POSITION_LIMIT['PEARLS']) and (self.position[product] > 0):
-            num = max(-40, -self.POSITION_LIMIT['PEARLS']-cpos)
+        if (cpos > -self.POSITION_LIMIT['AMETHYSTS']) and (self.position[product] > 0):
+            num = max(-40, -self.POSITION_LIMIT['AMETHYSTS']-cpos)
             orders.append(Order(product, max(undercut_sell-1, acc_ask+1), num))
             cpos += num
 
-        if (cpos > -self.POSITION_LIMIT['PEARLS']) and (self.position[product] < -15):
-            num = max(-40, -self.POSITION_LIMIT['PEARLS']-cpos)
+        if (cpos > -self.POSITION_LIMIT['AMETHYSTS']) and (self.position[product] < -15):
+            num = max(-40, -self.POSITION_LIMIT['AMETHYSTS']-cpos)
             orders.append(Order(product, max(undercut_sell+1, acc_ask+1), num))
             cpos += num
 
-        if cpos > -self.POSITION_LIMIT['PEARLS']:
-            num = max(-40, -self.POSITION_LIMIT['PEARLS']-cpos)
+        if cpos > -self.POSITION_LIMIT['AMETHYSTS']:
+            num = max(-40, -self.POSITION_LIMIT['AMETHYSTS']-cpos)
             orders.append(Order(product, sell_pr, num))
             cpos += num
 
@@ -459,9 +459,9 @@ class Trader:
 
     def compute_orders(self, product, order_depth, acc_bid, acc_ask):
 
-        if product == "PEARLS":
-            return self.compute_orders_pearls(product, order_depth, acc_bid, acc_ask)
-        if product == "BANANAS":
+        if product == "AMETHYSTS":
+            return self.compute_orders_amethysts(product, order_depth, acc_bid, acc_ask)
+        if product == "STARFRUIT":
             return self.compute_orders_regression(product, order_depth, acc_bid, acc_ask, self.POSITION_LIMIT[product])
         
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
@@ -470,7 +470,7 @@ class Trader:
         and outputs a list of orders to be sent
         """
         # Initialize the method output dict as an empty dict
-        result = {'PEARLS' : [], 'BANANAS' : [], 'COCONUTS' : [], 'PINA_COLADAS' : [], 'DIVING_GEAR' : [], 'BERRIES' : [], 'DIP' : [], 'BAGUETTE' : [], 'UKULELE' : [], 'PICNIC_BASKET' : []}
+        result = {'AMETHYSTS' : [], 'STARFRUIT' : [], 'COCONUTS' : [], 'PINA_COLADAS' : [], 'DIVING_GEAR' : [], 'BERRIES' : [], 'DIP' : [], 'BAGUETTE' : [], 'UKULELE' : [], 'PICNIC_BASKET' : []}
 
         # Iterate over all the keys (the available products) contained in the order dephts
         for key, val in state.position.items():
@@ -483,32 +483,32 @@ class Trader:
 
         timestamp = state.timestamp
 
-        if len(self.bananas_cache) == self.bananas_dim:
-            self.bananas_cache.pop(0)
+        if len(self.starfruit_cache) == self.starfruit_dim:
+            self.starfruit_cache.pop(0)
         if len(self.coconuts_cache) == self.coconuts_dim:
             self.coconuts_cache.pop(0)
 
-        _, bs_bananas = self.values_extract(collections.OrderedDict(sorted(state.order_depths['BANANAS'].sell_orders.items())))
-        _, bb_bananas = self.values_extract(collections.OrderedDict(sorted(state.order_depths['BANANAS'].buy_orders.items(), reverse=True)), 1)
+        _, bs_starfruit = self.values_extract(collections.OrderedDict(sorted(state.order_depths['STARFRUIT'].sell_orders.items())))
+        _, bb_starfruit = self.values_extract(collections.OrderedDict(sorted(state.order_depths['STARFRUIT'].buy_orders.items(), reverse=True)), 1)
 
-        self.bananas_cache.append((bs_bananas+bb_bananas)/2)
+        self.starfruit_cache.append((bs_starfruit+bb_starfruit)/2)
 
         INF = 1e9
     
-        bananas_lb = -INF
-        bananas_ub = INF
+        starfruit_lb = -INF
+        starfruit_ub = INF
 
-        if len(self.bananas_cache) == self.bananas_dim:
-            bananas_lb = self.calc_next_price_bananas()-1
-            bananas_ub = self.calc_next_price_bananas()+1
+        if len(self.starfruit_cache) == self.starfruit_dim:
+            starfruit_lb = self.calc_next_price_starfruit()-1
+            starfruit_ub = self.calc_next_price_starfruit()+1
 
-        pearls_lb = 10000
-        pearls_ub = 10000
+        amethysts_lb = 10000
+        amethysts_ub = 10000
 
         # CHANGE FROM HERE
 
-        acc_bid = {'PEARLS' : pearls_lb, 'BANANAS' : bananas_lb} # we want to buy at slightly below
-        acc_ask = {'PEARLS' : pearls_ub, 'BANANAS' : bananas_ub} # we want to sell at slightly above
+        acc_bid = {'AMETHYSTS' : amethysts_lb, 'STARFRUIT' : starfruit_lb} # we want to buy at slightly below
+        acc_ask = {'AMETHYSTS' : amethysts_ub, 'STARFRUIT' : starfruit_ub} # we want to sell at slightly above
 
         self.steps += 1
 
@@ -521,21 +521,9 @@ class Trader:
                 self.person_actvalof_position[trade.buyer][product] += trade.quantity
                 self.person_actvalof_position[trade.seller][product] += -trade.quantity
 
-        orders = self.compute_orders_c_and_pc(state.order_depths)
-        result['PINA_COLADAS'] += orders['PINA_COLADAS']
-        result['COCONUTS'] += orders['COCONUTS']
-        orders = self.compute_orders_dg(state.order_depths, state.observations)
-        result['DIVING_GEAR'] += orders['DIVING_GEAR']
-        orders = self.compute_orders_br(state.order_depths, state.timestamp)
-        result['BERRIES'] += orders['BERRIES']
 
-        orders = self.compute_orders_basket(state.order_depths)
-        result['PICNIC_BASKET'] += orders['PICNIC_BASKET']
-        result['DIP'] += orders['DIP']
-        result['BAGUETTE'] += orders['BAGUETTE']
-        result['UKULELE'] += orders['UKULELE']
 
-        for product in ['PEARLS', 'BANANAS']:
+        for product in ['AMETHYSTS', 'STARFRUIT']:
             order_depth: OrderDepth = state.order_depths[product]
             orders = self.compute_orders(product, order_depth, acc_bid[product], acc_ask[product])
             result[product] += orders
