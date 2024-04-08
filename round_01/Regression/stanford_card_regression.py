@@ -101,9 +101,11 @@ class Trader:
     volume_traded = copy.deepcopy(empty_dict)
 
     def calc_next_price_starfruit(self, cache):
-        coef = [0.09462462, 0.11060365, 0.11892367, 0.15493343,
-        0.21855536, 0.30197656]
-        intercept = 1.93268232
+        coef = [-4.90752635*10**-4,  5.72898821*10**-3,  5.13493589*10**-3,
+         5.35559352*10**-3,  1.64973001*10**-2,  1.39435384*10**-2,  2.26222457*10**-2,
+         5.94951752*10**-3,  3.88827732*10**-2,  6.03869476*10**-2,  8.58054132*10**-2,
+         1.00255225*10**-1,  1.40776174*10**-1,  2.06719376*10**-1,  2.92095503*10**-1]
+        intercept = 1.70449263
         nxt_price = intercept
         for i, val in enumerate(cache):
             nxt_price += val * coef[i]
@@ -267,7 +269,8 @@ class Trader:
         for key, val in self.position.items():
             print(f'{key} position: {val}')
 
-        if len(new_starfruit_cache) == 6:
+        regression_depth = 15
+        if len(new_starfruit_cache) == regression_depth:
             new_starfruit_cache.pop(0)
 
         _, bs_starfruit = self.values_extract(
@@ -282,7 +285,7 @@ class Trader:
         starfruit_lb = -INF
         starfruit_ub = INF
 
-        if len(new_starfruit_cache) == 6:
+        if len(new_starfruit_cache) == regression_depth:
             starfruit_lb = self.calc_next_price_starfruit(new_starfruit_cache) - 1
             starfruit_ub = self.calc_next_price_starfruit(new_starfruit_cache) + 1
 
