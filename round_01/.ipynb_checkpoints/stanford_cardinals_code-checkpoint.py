@@ -118,7 +118,9 @@ class Trader:
     person_actvalof_position = defaultdict(def_value)
 
     cpnl = defaultdict(lambda : 0)
+    starfruit_cache = []
     coconuts_cache = []
+    starfruit_dim = 4
     coconuts_dim = 3
     steps = 0
     last_dolphins = -1
@@ -334,14 +336,14 @@ class Trader:
         _, bs_starfruit = self.values_extract(collections.OrderedDict(sorted(state.order_depths['STARFRUIT'].sell_orders.items())))
         _, bb_starfruit = self.values_extract(collections.OrderedDict(sorted(state.order_depths['STARFRUIT'].buy_orders.items(), reverse=True)), 1)
 
-        new_starfruit_cache.append((bs_starfruit+bb_starfruit)/2)
+        self.starfruit_cache.append((bs_starfruit+bb_starfruit)/2)
 
         INF = 1e9
     
         starfruit_lb = -INF
         starfruit_ub = INF
 
-        if len(self.starfruit_cache) == 4:
+        if len(self.starfruit_cache) == self.starfruit_dim:
             starfruit_lb = self.calc_next_price_starfruit(new_starfruit_cache)-1
             starfruit_ub = self.calc_next_price_starfruit(new_starfruit_cache)+1
 
