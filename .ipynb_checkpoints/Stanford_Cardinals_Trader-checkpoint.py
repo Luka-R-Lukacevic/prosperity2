@@ -540,7 +540,6 @@ class Trader:
             orders = self.compute_orders(product, order_depth, acc_bid[product], acc_ask[product])
             result[product] += orders
 
-        
         for product in state.own_trades.keys():
             for trade in state.own_trades[product]:
                 if trade.timestamp != state.timestamp-100:
@@ -566,9 +565,18 @@ class Trader:
             totpnl += settled_pnl + self.cpnl[product]
             print(f"For product {product}, {settled_pnl + self.cpnl[product]}, {(settled_pnl+self.cpnl[product])/(self.volume_traded[product]+1e-20)}")
 
+        for person in self.person_position.keys():
+            for val in self.person_position[person].keys():
+                
+                if person == 'Olivia':
+                    self.person_position[person][val] *= 0.995
+                if person == 'Pablo':
+                    self.person_position[person][val] *= 0.8
+                if person == 'Camilla':
+                    self.person_position[person][val] *= 0
 
         print(f"Timestamp {timestamp}, Total PNL ended up being {totpnl}")
         # print(f'Will trade {result}')
         print("End transmission")
                 
-        return result, None, ""
+        return result
