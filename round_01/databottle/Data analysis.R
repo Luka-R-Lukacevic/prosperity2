@@ -140,12 +140,14 @@ summary(lm(y_future~x0))
 
 
 
-#Regression1: Trying to regress on the t+1 mid_prices with info up to t
-y <- prices$mid_price[-1]
-y_weight <-prices$weighted_mid[-1]
-dy <- y-prices$mid_price[(1:length(prices$mid_price)-1)]
+#Regression1: Trying to regress on the t+3 mid_prices with info up to t
+n<-nrow(prices)
+y <- prices$mid_price[4:n]
+y_weight <-prices$weighted_mid[4:n]
+dy <- y-prices$mid_price[1:(n-3)]
+dy_w <- y_weight-prices$weighted_mid[1:(n-3)]
 
-data <- prices[-nrow(prices), c("weighted_mid", "sentiment", "average_sentiment", "rsi", "ema", "macd", "volume", "bid_volume_1", "ask_volume_1", "stoch")]
+data <- prices[1:(n-3), c("sentiment", "average_sentiment", "rsi", "macd", "volume")]
 # List all column names in the 'prices' dataframe
 
 model <- lm(dy~., data = data)
@@ -154,19 +156,21 @@ model <- lm(dy~., data = data)
 summary(model)
 #summary(alt_model)
 
-model_weight <-lm(y_weight~., data = data)
+model_weight <-lm(dy_w~., data = data)
 summary(model_weight)
+par(mfrow = c(2, 2)) # Arrange plots in a 2x2 grid
+plot(model_weight)
+
 
 #Regression2: Trying to regress on the t+3 to t+5 average with info up to t
-y_future <- rep(0, length(prices$mid_price) - 5)
+y_future_w <- rep(0, n - 5)
 
 # Loop over valid range of j
-for(j in 1:(length(y_future))) {
+for(j in 1:(n-5)) {
   # Calculate the average of elements at positions j+3, j+4, and j+5
-  y_future[j] <- mean(prices$mid_price[(j+3):(j+5)])
+  y_future_w[j] <- mean(prices$weighted_mid[(j+3):(j+5)])
 }
+dy_future_w <-y_future_w-prices$weighted_mid[1:(n-5)]
 
-model_future <- lm(y_future~., data = data[1:(nrow(data) - 4), ])
+model_future <- lm(dy_future_w~., data = data[1:(n-5), ])
 summary(model_future)
-
-
