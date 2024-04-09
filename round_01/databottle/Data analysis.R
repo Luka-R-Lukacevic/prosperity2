@@ -100,6 +100,12 @@ library(TTR)
 prices$rsi <- RSI(prices$mid_price, n=5)
 prices$ema <-EMA(prices$mid_price, n=10)
 prices$macd <-MACD(prices$mid_price)[, "macd"]
+prices$stoch <- stoch(prices$rsi)
+
+prices$volume <- rowSums(prices[, c("bid_volume_1", "ask_volume_1", 
+                                    "bid_volume_2", "ask_volume_2", 
+                                    "bid_volume_3", "ask_volume_3")], 
+                         na.rm = TRUE)
 
 
 
@@ -139,9 +145,10 @@ y <- prices$mid_price[-1]
 y_weight <-prices$weighted_mid[-1]
 dy <- y-prices$mid_price[(1:length(prices$mid_price)-1)]
 
-data <- prices[-nrow(prices), c("sentiment", "average_sentiment", "rsi", "ema", "macd", "bid_volume_1", "ask_volume_1")]
+data <- prices[-nrow(prices), c("weighted_mid", "sentiment", "average_sentiment", "rsi", "ema", "macd", "volume", "bid_volume_1", "ask_volume_1", "stoch")]
+# List all column names in the 'prices' dataframe
 
-model <- lm(dy ~ sentiment * average_sentiment * rsi * ema * macd * bid_volume_1 * ask_volume_1, data = data)
+model <- lm(dy~., data = data)
 #glm(dy~.,family=gaussian, data = data)
 #alt_model <- glm(dy+10 ~ ., family = poisson, data = data)
 summary(model)
