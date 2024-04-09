@@ -42,6 +42,8 @@ prices$sentiment <- (prices$mid_price-prices$bid_price_1)*prices$bid_volume_1/((
 #get average sentiment
 #install.packages("zoo")
 library(zoo)
+library(ggplot2)
+library(gridExtra)
 
 prices$average_sentiment <- rollapply(prices$sentiment, 3, mean, partial = TRUE, align = "right")
 
@@ -99,7 +101,7 @@ library(TTR)
 
 prices$rsi <- RSI(prices$mid_price, n=5)
 prices$ema <-EMA(prices$mid_price, n=10)
-prices$macd <-MACD(prices$mid_price)[, "macd"]
+prices$macd <-MACD(prices$mid_price, nFast =3, nSlow = 10, percent=FALSE)[,"macd"]
 prices$stoch <- stoch(prices$rsi)
 
 prices$volume <- rowSums(prices[, c("bid_volume_1", "ask_volume_1", 
@@ -147,7 +149,7 @@ y_weight <-prices$weighted_mid[4:n]
 dy <- y-prices$mid_price[1:(n-3)]
 dy_w <- y_weight-prices$weighted_mid[1:(n-3)]
 
-data <- prices[1:(n-3), c("sentiment", "average_sentiment", "rsi", "macd", "volume")]
+data <- prices[1:(n-3), c("sentiment", "average_sentiment", "rsi", "volume")]
 # List all column names in the 'prices' dataframe
 
 model <- lm(dy~., data = data)

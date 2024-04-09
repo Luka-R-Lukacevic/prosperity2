@@ -39,5 +39,3 @@ for i in range(len(Y)):
 
 beta = np.linalg.lstsq(X, Y)
 print(beta[0])  ## Those are the regression parameters, The first is the constant term ('intercept' in the code).
-
-#for data, add some of the other indicators, namely sentiment, average sentiment, rsi, macd, volume
