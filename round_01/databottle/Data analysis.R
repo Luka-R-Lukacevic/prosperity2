@@ -71,6 +71,28 @@ p2 <- ggplot(prices_subset, aes(x = timestamp)) +
 grid.arrange(p1, p2, ncol = 1)
 
 
+
+#Now plot the range
+
+#Calculate the difference between ask_price_1 and bid_price_1 and add as a new column
+prices$range <- prices$ask_price_1 - prices$bid_price_1
+# Calculate the 3-period moving average of 'range'
+prices$range_ma5 <- rollmean(prices$range, 5, fill = NA, align = 'right')
+
+# Create the plot with the original 'range' and the moving average
+price_diff_plot <- ggplot(prices[1:250, ], aes(x = 1:250)) +
+  geom_line(aes(y = range), color = 'blue', linetype = "dashed") +
+  geom_line(aes(y = range_ma3), color = 'red') +
+  labs(title = "Price Difference and 3-Period MA (First 250 Observations)",
+       x = "Observation", y = "Price Difference/MA") +
+  theme_minimal() +
+  scale_color_manual(values = c("blue", "red"))
+
+# Display the plot
+print(price_diff_plot)
+#We observe that the range changes quite a bit
+
+
 #now calculate further technical indicators
 install.packages("TTR")
 library(TTR)
@@ -80,18 +102,53 @@ prices$ema <-EMA(prices$mid_price, n=10)
 prices$macd <-MACD(prices$mid_price)[, "macd"]
 
 
-#Regression: Trying to regress on the t+1 mid_prices with info up to t
+
+#Regression0: Replicating the Cardinal Regression on the t+1 mid_prices with 4 last midprices from t
+y <- prices$mid_price[5:length(prices$mid_price)]
+
+x0<-prices$mid_price[4:(length(prices$mid_price)-1)]
+x1<-prices$mid_price[3:(length(prices$mid_price)-2)]
+x2<-prices$mid_price[2:(length(prices$mid_price)-3)]
+x3<-prices$mid_price[1:(length(prices$mid_price)-4)]
+model0 <- lm(y~x0+x1+x2+x3)
+summary(model0)
+
+
+
+#Interestingly though we do not get good results when trying to predict change in mid_price_t and mid_price_t+1
+dy <- prices$mid_price[5:length(prices$mid_price)] - prices$mid_price[4:(length(prices$mid_price)-1)]
+model_d0 <- lm(dy~x1+x2+x3)
+summary(model_d0)
+
+#Let us see how well price x0 can predict into the deeper future
+y_future <- prices$mid_price[15:length(prices$mid_price)]
+
+x0<-prices$mid_price[4:(length(prices$mid_price)-11)]
+x1<-prices$mid_price[3:(length(prices$mid_price)-12)]
+x2<-prices$mid_price[2:(length(prices$mid_price)-13)]
+x3<-prices$mid_price[1:(length(prices$mid_price)-14)]
+model0 <- lm(y_future~x0+x1+x2+x3)
+summary(model0)
+summary(lm(y_future~x0))
+
+
+
+
+#Regression1: Trying to regress on the t+1 mid_prices with info up to t
 y <- prices$mid_price[-1]
 y_weight <-prices$weighted_mid[-1]
+dy <- y-prices$mid_price[(1:length(prices$mid_price)-1)]
 
-data <- prices[-nrow(prices), c("mid_price", "weighted_mid", "sentiment", "average_sentiment", "rsi", "ema", "macd")]
+data <- prices[-nrow(prices), c("sentiment", "average_sentiment", "rsi", "ema", "macd", "bid_volume_1", "ask_volume_1")]
 
-model <- lm(y~., data = data)
+model <- lm(dy ~ sentiment * average_sentiment * rsi * ema * macd * bid_volume_1 * ask_volume_1, data = data)
+#glm(dy~.,family=gaussian, data = data)
+#alt_model <- glm(dy+10 ~ ., family = poisson, data = data)
 summary(model)
+#summary(alt_model)
 
 model_weight <-lm(y_weight~., data = data)
 summary(model_weight)
-
 
 #Regression2: Trying to regress on the t+3 to t+5 average with info up to t
 y_future <- rep(0, length(prices$mid_price) - 5)
@@ -104,3 +161,5 @@ for(j in 1:(length(y_future))) {
 
 model_future <- lm(y_future~., data = data[1:(nrow(data) - 4), ])
 summary(model_future)
+
+
