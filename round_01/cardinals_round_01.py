@@ -1,10 +1,12 @@
 import copy
 import json
+import math
 import jsonpickle
 import collections
 from collections import defaultdict
 from typing import Any, Dict, List
 import numpy as np
+import pandas as pd
 from datamodel import (Listing, Observation, Order, OrderDepth,
                        ProsperityEncoder, Symbol, Trade, TradingState)
 
@@ -93,20 +95,55 @@ def def_value():
     return copy.deepcopy(empty_dict)
 
 
+
+def calculate_rsi(prices, period=5):
+    # Convert list to pandas Series
+    prices_series = pd.Series(prices)
+
+    # Calculate daily price changes
+    delta = prices_series.diff()
+
+    # Separate gains and losses
+    gain = delta.clip(lower=0)
+    loss = -1 * delta.clip(upper=0)
+
+    # Calculate average gains and losses using EMA
+    avg_gain = gain.ewm(com=period-1, min_periods=period).mean()
+    avg_loss = loss.ewm(com=period-1, min_periods=period).mean()
+
+    # Calculate RS
+    rs = avg_gain / avg_loss
+
+    # Calculate RSI
+    rsi = 100 - (100 / (1 + rs))
+
+    return rsi
+
+
+
+
 class Trader:
 
     position = copy.deepcopy(empty_dict)
     POSITION_LIMIT = {'AMETHYSTS' : 20, 'STARFRUIT' : 20}
     volume_traded = copy.deepcopy(empty_dict)
+
+
+    def calculate_delta_price(self, sentiment, avg_sentiment, rsi,volume):
+        dy = -1.693197147 #intercept
+        dy += (6.222214776*sentiment + 0.185228211*avg_sentiment - 0.032721975*rsi + 0.003717542*volume)
+        return dy
     
-    def calc_next_price_starfruit(self, cache):
-        coef = [-0.01869561,  0.0455032 ,  0.16316049,  0.8090892]
-        intercept = 4.481696494462085
-        nxt_price = intercept
-        for i, val in enumerate(cache):
-            nxt_price += val * coef[i]
+    def calc_next_price_starfruit(self, cache, state: TradingState):
+
+        y = np.array(cache)
+        x = np.array([state.timestamp -100*x for x in range(10, 0, -1)])
+        A = np.vstack([x, np.ones(len(x))]).T
+        m, c = np.linalg.lstsq(A, y, rcond=None)[0]
+
+        fair_value_regression = m*state.timestamp + c
             
-        return int(round(nxt_price))
+        return int(round(fair_value_regression))
 
     def values_extract(self, order_dict, buy=0):
         tot_vol = 0
@@ -256,34 +293,67 @@ class Trader:
         
         # Initialize the method output dict as an empty dict
         result = {'AMETHYSTS' : [], 'STARFRUIT' : []}
-        new_starfruit_cache = []
+        decoded_dict = {}
         if state.traderData:
-            new_starfruit_cache = jsonpickle.decode(state.traderData)
+            decoded_dict = jsonpickle.decode(state.traderData)
+        
+        new_starfruit_cache = []
+        if "new_starfruit_cache" in decoded_dict.keys():
+            new_starfruit_cache = decoded_dict["new_starfruit_cache"]
+        sentiment_cache = []
+        if "sentiment_cache" in decoded_dict.keys():
+            sentiment_cache = decoded_dict["sentiment_cache"]
+        
+
+        
         
         
         # Iterate over all the keys (the available products) contained in the order dephts
         for key, val in state.position.items():
             self.position[key] = val
-        print()
-        for key, val in self.position.items():
-            print(f'{key} position: {val}')
+        #print()
+        #for key, val in self.position.items():
+            #print(f'{key} position: {val}')
 
-        if len(new_starfruit_cache) == 4:
+        if len(new_starfruit_cache) == 10:
             new_starfruit_cache.pop(0)
 
-        _, bs_starfruit = self.values_extract(collections.OrderedDict(sorted(state.order_depths['STARFRUIT'].sell_orders.items())))
-        _, bb_starfruit = self.values_extract(collections.OrderedDict(sorted(state.order_depths['STARFRUIT'].buy_orders.items(), reverse=True)), 1)
+        vol_ask, bs_starfruit = self.values_extract(collections.OrderedDict(sorted(state.order_depths['STARFRUIT'].sell_orders.items())))
+        vol_bid, bb_starfruit = self.values_extract(collections.OrderedDict(sorted(state.order_depths['STARFRUIT'].buy_orders.items(), reverse=True)), 1)
 
-        new_starfruit_cache.append((bs_starfruit+bb_starfruit)/2)
+        starfruit_mid = (bs_starfruit+bb_starfruit)/2
+        new_starfruit_cache.append(starfruit_mid)
+        current_sentiment_amethyst = (starfruit_mid - bb_starfruit)*vol_bid/( (starfruit_mid - bb_starfruit)*vol_bid + (bs_starfruit-starfruit_mid)*vol_ask)
+
+        if len(sentiment_cache) == 3:
+            sentiment_cache.pop(0)
+        sentiment_cache.append(current_sentiment_amethyst)
+        average_sentiment = np.mean(sentiment_cache)
+        volume = sum(state.order_depths['STARFRUIT'].buy_orders.values()) + sum(abs(v) for v in state.order_depths['STARFRUIT'].sell_orders.values())
+        
+        n = len(new_starfruit_cache)
 
         INF = 1e9
     
         starfruit_lb = -INF
         starfruit_ub = INF
 
-        if len(new_starfruit_cache) == 4:
-            starfruit_lb = self.calc_next_price_starfruit(new_starfruit_cache)-1
-            starfruit_ub = self.calc_next_price_starfruit(new_starfruit_cache)+1
+        if n == 10:
+            fair = self.calc_next_price_starfruit(new_starfruit_cache, state)
+            weighted_mid = (bb_starfruit*vol_bid + bs_starfruit*vol_ask)/(vol_bid+vol_ask)
+            rsi = calculate_rsi(new_starfruit_cache).iloc[-1]
+            if math.isnan(rsi):
+                rsi=50
+            dy = self.calculate_delta_price(current_sentiment_amethyst, average_sentiment, rsi, volume)
+            logger.print("dy_t-1: ", new_starfruit_cache[9]-new_starfruit_cache[8])
+            logger.print("dy: ", dy)
+            price = fair - dy/3
+            starfruit_lb = int(round(price))-1
+            starfruit_ub = int(round(price))+1
+        else:
+            if n > 0:
+                starfruit_lb = starfruit_mid - 1  #for the first 10 timestamps we use the current mid price as our price prediction
+                starfruit_ub = starfruit_mid + 1
 
         amethysts_lb = 10000
         amethysts_ub = 10000
@@ -296,7 +366,9 @@ class Trader:
             orders = self.compute_orders(product, order_depth, acc_bid[product], acc_ask[product])
             result[product] += orders
 
-        trader_data = jsonpickle.encode(new_starfruit_cache)
+        new_dict = {"new_starfruit_cache": new_starfruit_cache, "sentiment_cache": sentiment_cache}
+        trader_data = jsonpickle.encode(new_dict)
+
 
         logger.flush(state, result, None, trader_data)
         return result, None, trader_data
