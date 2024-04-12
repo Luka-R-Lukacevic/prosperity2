@@ -321,13 +321,13 @@ class Trader:
 
     def compute_orders_orchids(self, product, state):
 
-        conversions= []
+        conversions= 0
         
         
-        #print(osell, obuy)
-        #print(state.oberservations['conversionObservations'])
         
-        return 0
+        logger.print(state.observations)
+        
+        return conversions
 
 
 
