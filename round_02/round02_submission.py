@@ -158,7 +158,7 @@ class Trader:
         return tot_vol, best_val
 
 
-    def compute_orders_amethysts(self, product, state):
+    def compute_orders_amethysts(self, product, state: TradingState):
         
         orders: list[Order] = []
         
@@ -237,7 +237,7 @@ class Trader:
         return orders
 
 
-    def compute_orders_starfruit(self, product, state, new_starfruit_cache):
+    def compute_orders_starfruit(self, product, state: TradingState, new_starfruit_cache):
         
         orders: list[Order] = []
         
@@ -319,13 +319,18 @@ class Trader:
         return new_starfruit_cache, orders
 
 
-    def compute_orders_orchids(self, product, state):
+    def compute_orders_orchids(self, product, state: TradingState):
 
         conversions= 0
         
+        bid_price = state.observations.conversionObservations[product].bidPrice
+        ask_price = state.observations.conversionObservations[product].askPrice
+        transport_fees = state.observations.conversionObservations[product].transportFees
+        export_tariff = state.observations.conversionObservations[product].exportTariff
+        import_tariff = state.observations.conversionObservations[product].importTariff	
+        sunlight = state.observations.conversionObservations[product].sunlight
+        humidity = state.observations.conversionObservations[product].humidity
         
-        
-        logger.print(state.observations)
         
         return conversions
 
@@ -371,7 +376,6 @@ class Trader:
         trader_data = jsonpickle.encode(new_dict)
         
         
-        
-        logger.flush(state, orders_result, conversions_result, trader_data)
+        #logger.flush(state, orders_result, conversions_result, trader_data)
         
         return orders_result, conversions, trader_data
