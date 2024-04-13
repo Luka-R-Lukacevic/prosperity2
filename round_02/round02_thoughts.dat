@@ -4,18 +4,31 @@
 
         - Humidity & Sunlight influence production:
             - Sunlight:
-                - Whenever exposure is less than 7 hours a day, production will decrease with 4% for every 10 minutes (10 minutes?  -->  10 timesteps??)
+                - Whenever exposure is less than 7 hours a day, production will decrease with 4% for every 10 minutes (10'000 iterations == 24h -> 10 minutes == 625/9 iterations == 69.44 )
+                - Average sunlight per hour is 2500 units. The data/plot shows the instantaneous rate of sunlight on any moment of the day.
+
             - Humidity:
                 - Ideal between 60 - 80 %
                 - Outside those limits production will fall with 2% for every 5% point of Humidity change
         
         - Storage:
             - 0.1 Seashell per Orchid per timestep
+            - only for positive balances
         
         - Tariffs & Fees:
+
+            - negative Tariffs means we get paid !!
                 
             1. ConversionObservation shows quotes of ORCHID provided by the ducks from South Archipelago
             2. If you want to purchase 1 unit of ORCHID from the south, you will purchase at the askPrice, pay the TRANSPORT_FEES, IMPORT_TARIFF
             3. If you want to sell 1 unit of ORCHID to the south, you will sell at the bidPrice, pay the TRANSPORT_FEES, EXPORT_TARIFF
             4. You can ONLY trade with the south via the conversion request with application conditions as mentioned in the wiki
             5. For every unit of net long ORCHID position you hold, you will pay 0.1 Seashells per timestamp you held that position as storage cost. No storage cost is applicable to net short positions
+
+
+        - Ideas:
+
+            - Market making on ORCHIDS with inventory management over dark pool aka south island when profitable
+            - forecasting dark pool supply and demand with linear regression on Humidity and Sunlight
+            - Market making does not work without conversions 
+            - Huge blocks of orders at some iterations and no orders on other iterations
