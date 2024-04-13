@@ -326,6 +326,9 @@ class Trader:
         
         position_limit = self.POSITION_LIMIT[product]
         
+        conversions = 0
+        
+        target_inventory = 0
         
         bid_price_obs = state.observations.conversionObservations[product].bidPrice
         ask_price_obs = state.observations.conversionObservations[product].askPrice
@@ -335,31 +338,24 @@ class Trader:
         sunlight_obs = state.observations.conversionObservations[product].sunlight              # Average sunlight per hour is 2500 units. The data/plot shows the instantaneous rate of sunlight on any moment of the day.
         humidity_obs = state.observations.conversionObservations[product].humidity              # Given in %
         
+        import_price = ask_price_obs + import_tariff_obs + transport_fees_obs
+        export_price = bid_price_obs + export_tariff_obs + transport_fees_obs
         
-        worst_sell_pr = list(collections.OrderedDict(sorted(order_depth.sell_orders.items())))[0]
-        worst_buy_pr = list(collections.OrderedDict(sorted(order_depth.buy_orders.items(), reverse=True)))[0]
-    
-        
-        undercut_buy = worst_buy_pr + 1
-        undercut_sell = worst_sell_pr - 1
-        
-        
-        cpos = self.position[product]
-        
-        if cpos < position_limit:
-            num = min(position_limit * 2, position_limit - cpos)
-            orders.append(Order(product, undercut_buy, num))
-            cpos += num
+        lob_buy_strikes = list(order_depth.buy_orders.keys())                                   # Returns a list of all unique strikes where at least 1 buy order has been submitted to the orderbook (lob) --> positive & high to low strikes
+        lob_sell_strikes = list(order_depth.sell_orders.keys())                                 # Returns a list of all unique strikes where at least 1 sell order has been submitted to the orderbook (lob) --> positive & low to high strikes
+        lob_buy_volume_per_strike = list(order_depth.buy_orders.values())                       # Returns a list of volumes for the lob_buy_strikes --> positive & high to low strikes
+        lob_sell_volume_per_strike = [-x for x in list(order_depth.sell_orders.values())]       # Returns a list of volumes for the lob_sell_strikes --> positive & low to high strikes
         
         cpos = self.position[product]
-
-        if cpos > -position_limit:
-            num = max(-position_limit * 2, -position_limit - cpos)
-            orders.append(Order(product, undercut_sell, num))
-            cpos += num
         
         
-        conversions = -self.position[product]
+        for idx, bid in enumerate(lob_buy_strikes):
+            if bid > import_price:
+                volume = lob_buy_volume_per_strike[idx]
+                orders.append(Order(product,bid, - volume))
+        
+        
+        conversions += - cpos + target_inventory
         
         
         return orders, conversions
