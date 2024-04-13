@@ -9,7 +9,7 @@ import pandas as pd
 from datamodel import (Listing, Observation, Order, OrderDepth,
                        ProsperityEncoder, Symbol, Trade, TradingState)
 
-empty_dict = {'AMETHYSTS' : 0, 'STARFRUIT' : 0}
+empty_dict = {'AMETHYSTS' : 0, 'STARFRUIT' : 0, 'ORCHIDS' : 0}
 
 
 class Logger:
@@ -178,9 +178,9 @@ class Trader:
         mx_with_buy = -1
 
         for ask, vol in osell.items():
-            if ((ask < acc_bid) or ((self.position[product] < 0) and (ask == acc_bid))) and cpos < self.POSITION_LIMIT['AMETHYSTS']:
+            if ((ask < acc_bid) or ((self.position[product] < 0) and (ask == acc_bid))) and cpos < self.POSITION_LIMIT[product]:
                 mx_with_buy = max(mx_with_buy, ask)
-                order_for = min(-vol, self.POSITION_LIMIT['AMETHYSTS'] - cpos)
+                order_for = min(-vol, self.POSITION_LIMIT[product] - cpos)
                 cpos += order_for
                 assert(order_for >= 0)
                 orders.append(Order(product, ask, order_for))
@@ -194,43 +194,43 @@ class Trader:
         bid_pr = min(undercut_buy, acc_bid - 1) # we will shift this by 1 to beat this price
         sell_pr = max(undercut_sell, acc_ask + 1)
 
-        if (cpos < self.POSITION_LIMIT['AMETHYSTS']) and (self.position[product] < 0):
-            num = min(40, self.POSITION_LIMIT['AMETHYSTS'] - cpos)
+        if (cpos < self.POSITION_LIMIT[product]) and (self.position[product] < 0):
+            num = min(40, self.POSITION_LIMIT[product] - cpos)
             orders.append(Order(product, min(undercut_buy + 1, acc_bid - 1), num))
             cpos += num
 
-        if (cpos < self.POSITION_LIMIT['AMETHYSTS']) and (self.position[product] > 15):
-            num = min(40, self.POSITION_LIMIT['AMETHYSTS'] - cpos)
+        if (cpos < self.POSITION_LIMIT[product]) and (self.position[product] > 15):
+            num = min(40, self.POSITION_LIMIT[product] - cpos)
             orders.append(Order(product, min(undercut_buy - 1, acc_bid - 1), num))
             cpos += num
 
-        if cpos < self.POSITION_LIMIT['AMETHYSTS']:
-            num = min(40, self.POSITION_LIMIT['AMETHYSTS'] - cpos)
+        if cpos < self.POSITION_LIMIT[product]:
+            num = min(40, self.POSITION_LIMIT[product] - cpos)
             orders.append(Order(product, bid_pr, num))
             cpos += num
         
         cpos = self.position[product]
 
         for bid, vol in obuy.items():
-            if ((bid > acc_ask) or ((self.position[product]>0) and (bid == acc_ask))) and cpos > -self.POSITION_LIMIT['AMETHYSTS']:
-                order_for = max(-vol, -self.POSITION_LIMIT['AMETHYSTS'] - cpos)
+            if ((bid > acc_ask) or ((self.position[product]>0) and (bid == acc_ask))) and cpos > -self.POSITION_LIMIT[product]:
+                order_for = max(-vol, -self.POSITION_LIMIT[product] - cpos)
                 # order_for is a negative number denoting how much we will sell
                 cpos += order_for
                 assert(order_for <= 0)
                 orders.append(Order(product, bid, order_for))
 
-        if (cpos > -self.POSITION_LIMIT['AMETHYSTS']) and (self.position[product] > 0):
-            num = max(-40, -self.POSITION_LIMIT['AMETHYSTS'] - cpos)
+        if (cpos > -self.POSITION_LIMIT[product]) and (self.position[product] > 0):
+            num = max(-40, -self.POSITION_LIMIT[product] - cpos)
             orders.append(Order(product, max(undercut_sell - 1, acc_ask + 1), num))
             cpos += num
 
-        if (cpos > -self.POSITION_LIMIT['AMETHYSTS']) and (self.position[product] < -15):
-            num = max(-40, -self.POSITION_LIMIT['AMETHYSTS'] - cpos)
+        if (cpos > -self.POSITION_LIMIT[product]) and (self.position[product] < -15):
+            num = max(-40, -self.POSITION_LIMIT[product] - cpos)
             orders.append(Order(product, max(undercut_sell+1, acc_ask + 1), num))
             cpos += num
 
-        if cpos > -self.POSITION_LIMIT['AMETHYSTS']:
-            num = max(-40, -self.POSITION_LIMIT['AMETHYSTS'] - cpos)
+        if cpos > -self.POSITION_LIMIT[product]:
+            num = max(-40, -self.POSITION_LIMIT[product] - cpos)
             orders.append(Order(product, sell_pr, num))
             cpos += num
 
@@ -248,8 +248,8 @@ class Trader:
         if len(new_starfruit_cache) == 10:
             new_starfruit_cache.pop(0)
 
-        vol_ask, bs_starfruit = self.values_extract(collections.OrderedDict(sorted(state.order_depths['STARFRUIT'].sell_orders.items())))
-        vol_bid, bb_starfruit = self.values_extract(collections.OrderedDict(sorted(state.order_depths['STARFRUIT'].buy_orders.items(), reverse=True)), 1)
+        vol_ask, bs_starfruit = self.values_extract(collections.OrderedDict(sorted(state.order_depths[product].sell_orders.items())))
+        vol_bid, bb_starfruit = self.values_extract(collections.OrderedDict(sorted(state.order_depths[product].buy_orders.items(), reverse=True)), 1)
 
         starfruit_mid = (bs_starfruit + bb_starfruit) / 2
         new_starfruit_cache.append(starfruit_mid)
@@ -321,25 +321,55 @@ class Trader:
 
     def compute_orders_orchids(self, product, state: TradingState):
 
-        conversions= 0
+        order_depth: OrderDepth = state.order_depths[product]
+        orders: list[Order] = []
         
-        bid_price = state.observations.conversionObservations[product].bidPrice
-        ask_price = state.observations.conversionObservations[product].askPrice
-        transport_fees = state.observations.conversionObservations[product].transportFees
-        export_tariff = state.observations.conversionObservations[product].exportTariff
-        import_tariff = state.observations.conversionObservations[product].importTariff	
-        sunlight = state.observations.conversionObservations[product].sunlight
-        humidity = state.observations.conversionObservations[product].humidity
+        position_limit = self.POSITION_LIMIT[product]
         
         
-        return conversions
+        bid_price_obs = state.observations.conversionObservations[product].bidPrice
+        ask_price_obs = state.observations.conversionObservations[product].askPrice
+        transport_fees_obs = state.observations.conversionObservations[product].transportFees
+        export_tariff_obs = state.observations.conversionObservations[product].exportTariff
+        import_tariff_obs = state.observations.conversionObservations[product].importTariff	
+        sunlight_obs = state.observations.conversionObservations[product].sunlight              # Average sunlight per hour is 2500 units. The data/plot shows the instantaneous rate of sunlight on any moment of the day.
+        humidity_obs = state.observations.conversionObservations[product].humidity              # Given in %
+        
+        
+        worst_sell_pr = list(collections.OrderedDict(sorted(order_depth.sell_orders.items())))[0]
+        worst_buy_pr = list(collections.OrderedDict(sorted(order_depth.buy_orders.items(), reverse=True)))[0]
+    
+        
+        undercut_buy = worst_buy_pr + 1
+        undercut_sell = worst_sell_pr - 1
+        
+        
+        cpos = self.position[product]
+        
+        if cpos < position_limit:
+            num = min(position_limit * 2, position_limit - cpos)
+            orders.append(Order(product, undercut_buy, num))
+            cpos += num
+        
+        cpos = self.position[product]
+
+        if cpos > -position_limit:
+            num = max(-position_limit * 2, -position_limit - cpos)
+            orders.append(Order(product, undercut_sell, num))
+            cpos += num
+        
+        
+        conversions = -self.position[product]
+        
+        
+        return orders, conversions
 
 
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
         
         # Initialize the method output dict as an empty dict
-        orders_result = {'AMETHYSTS' : [], 'STARFRUIT' : []}
+        orders_result = {'AMETHYSTS' : [], 'STARFRUIT' : [], 'ORCHIDS' : []}
         conversions_result = 0
         
         # Decode traderData dict from previous iteration 
@@ -368,14 +398,15 @@ class Trader:
                 orders_result[product] += orders
             
             elif product == "ORCHIDS":
-                conversions = self.compute_orders_orchids(product, state)
+                orders, conversions = self.compute_orders_orchids(product, state)
                 conversions_result += conversions
+                orders_result[product] += orders
         
         
         new_dict = {"new_starfruit_cache": new_starfruit_cache}
         trader_data = jsonpickle.encode(new_dict)
         
         
-        #logger.flush(state, orders_result, conversions_result, trader_data)
+        logger.flush(state, orders_result, conversions_result, trader_data)
         
-        return orders_result, conversions, trader_data
+        return orders_result, conversions_result, trader_data
