@@ -341,27 +341,10 @@ class Trader:
         import_price = ask_price_obs + import_tariff_obs + transport_fees_obs
         export_price = bid_price_obs - export_tariff_obs - transport_fees_obs
         
-        lob_buy_strikes = list(order_depth.buy_orders.keys())                                   # Returns a list of all unique strikes where at least 1 buy order has been submitted to the orderbook (lob) --> positive & high to low strikes
-        lob_sell_strikes = list(order_depth.sell_orders.keys())                                 # Returns a list of all unique strikes where at least 1 sell order has been submitted to the orderbook (lob) --> positive & low to high strikes
-        lob_buy_volume_per_strike = list(order_depth.buy_orders.values())                       # Returns a list of volumes for the lob_buy_strikes --> positive & high to low strikes
-        lob_sell_volume_per_strike = [-x for x in list(order_depth.sell_orders.values())]       # Returns a list of volumes for the lob_sell_strikes --> positive & low to high strikes
-        
-        cpos = self.position[product]
-        
-        
-        #for idx, bid in enumerate(lob_buy_strikes):
-        #    if bid > import_price:
-        #        volume = lob_buy_volume_per_strike[idx]
-        #        orders.append(Order(product,bid, - volume))
-        #        cpos = cpos - volume
-        
-        orders.append(Order(product, int(round(import_price + 2)), -100-cpos))
-
-        #conversions += - self.position[product] + target_inventory
-
-        orders.append(Order(product, int(round(export_price - 1)), 100-cpos))
-
         conversions += - self.position[product] + target_inventory
+        
+        orders.append(Order(product, int(round(import_price + 2)), - position_limit))
+        orders.append(Order(product, int(round(export_price - 2)), position_limit))
         
         
         return orders, conversions
