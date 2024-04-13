@@ -4,7 +4,7 @@
 
         - Humidity & Sunlight influence production:
             - Sunlight:
-                - Whenever exposure is less than 7 hours a day, production will decrease with 4% for every 10 minutes (10'000 iterations == 24h -> 10 minutes == 625/9 iterations == 69.44 )
+                - Whenever exposure is less than 7 hours a day, production will decrease with 4% for every 10 minutes
                 - Average sunlight per hour is 2500 units. The data/plot shows the instantaneous rate of sunlight on any moment of the day.
 
             - Humidity:
