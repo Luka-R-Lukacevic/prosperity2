@@ -340,9 +340,16 @@ class Trader:
         
         import_price = ask_price_obs + import_tariff_obs + transport_fees_obs
         export_price = bid_price_obs - export_tariff_obs - transport_fees_obs
-        
+
         conversions += - self.position[product] + target_inventory
-        
+      
+        kosten = import_tariff_obs + transport_fees_obs
+        if -5 > kosten: x = 2.5
+        elif -4 > kosten: x = 2.0
+        elif -3 > kosten: x = 1.5
+        elif -2 > kosten: x = 1.1
+        else: x = 0.8
+          
         orders.append(Order(product, int(round(import_price + 2)), - position_limit))
         orders.append(Order(product, int(round(export_price - 2)), position_limit))
         
