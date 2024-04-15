@@ -350,7 +350,7 @@ class Trader:
         elif -2 > kosten: x = 1.1
         else: x = 0.8
           
-        orders.append(Order(product, int(round(import_price + 2)), - position_limit))
+        orders.append(Order(product, int(round(import_price + x)), - position_limit))
         orders.append(Order(product, int(round(export_price - 2)), position_limit))
         
         
