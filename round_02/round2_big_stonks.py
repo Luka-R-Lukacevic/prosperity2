@@ -118,7 +118,6 @@ class Logger:
 logger = Logger()
 
 
-
 class Trader:
 
     position = copy.deepcopy(empty_dict)
@@ -138,7 +137,7 @@ class Trader:
         return int(round(fair_value_regression))
 
 
-    def values_extract(self, order_dict, buy=0):
+    def values_extract(self, order_dict, buy = 0):
         
         tot_vol = 0
         best_val = -1
@@ -156,6 +155,18 @@ class Trader:
                 best_val = ask
         
         return tot_vol, best_val
+
+
+    def calc_orchids_profit_margin (self, import_tariff_obs, transport_fees_obs):
+        cost = import_tariff_obs + transport_fees_obs
+        
+        margin = 1
+        if cost >= -1:
+            margin = 0.5
+        else:
+            margin = (-1/2) * cost
+        
+        return margin
 
 
     def compute_orders_amethysts(self, product, state: TradingState):
@@ -335,24 +346,18 @@ class Trader:
         transport_fees_obs = state.observations.conversionObservations[product].transportFees
         export_tariff_obs = state.observations.conversionObservations[product].exportTariff
         import_tariff_obs = state.observations.conversionObservations[product].importTariff	
-        sunlight_obs = state.observations.conversionObservations[product].sunlight              # Average sunlight per hour is 2500 units. The data/plot shows the instantaneous rate of sunlight on any moment of the day.
-        humidity_obs = state.observations.conversionObservations[product].humidity              # Given in %
+        sunlight_obs = state.observations.conversionObservations[product].sunlight              
+        humidity_obs = state.observations.conversionObservations[product].humidity              
         
         import_price = ask_price_obs + import_tariff_obs + transport_fees_obs
         export_price = bid_price_obs - export_tariff_obs - transport_fees_obs
 
         conversions += - self.position[product] + target_inventory
-      
-        kosten = import_tariff_obs + transport_fees_obs
-        if -5 > kosten: x = 2.5
-        elif -4 > kosten: x = 2.0
-        elif -3 > kosten: x = 1.5
-        elif -2 > kosten: x = 1.1
-        else: x = 0.8
-          
-        orders.append(Order(product, int(round(import_price + x)), - position_limit))
-        orders.append(Order(product, int(round(export_price - 2)), position_limit))
+
+        margin = self.calc_orchids_profit_margin(import_tariff_obs, transport_fees_obs)
         
+        orders.append(Order(product, int(round(import_price + margin)), - position_limit))
+        orders.append(Order(product, int(round(export_price - 2)), position_limit))
         
         return orders, conversions
 
