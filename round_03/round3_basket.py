@@ -176,10 +176,10 @@ class Trader:
         cost = import_tariff_obs + transport_fees_obs
         
         margin = 1
-        if cost >= -1:
-            margin = 0.5
+        if cost >= -2.2:
+            margin = 0.2
         else:
-            margin = (-1/2) * cost
+            margin = - cost - 2
         
         return margin
 
@@ -370,8 +370,10 @@ class Trader:
         conversions += - self.position[product] + target_inventory
 
         margin = self.calc_orchids_profit_margin(import_tariff_obs, transport_fees_obs)
-        
-        orders.append(Order(product, int(round(import_price + margin)), - position_limit))
+        if int(round(import_price + margin)) > import_price:
+          orders.append(Order(product, int(round(import_price + margin)), - position_limit))
+        else:
+          orders.append(Order(product, int(round(import_price + 0.5)), - position_limit))
         orders.append(Order(product, int(round(export_price - 2)), position_limit))
         
         return orders, conversions
