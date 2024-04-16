@@ -113,7 +113,6 @@ normal_diff_plot
 standardized_diff_plot
 ratio_plot
 
-
 # Save the plots
 ggsave("normal_differences_plot.jpeg", normal_diff_plot, width = 12, height = 8, dpi = 300)
 ggsave("standardized_differences_plot.jpeg", standardized_diff_plot, width = 10, height = 6, dpi = 300)
