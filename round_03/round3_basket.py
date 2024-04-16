@@ -176,7 +176,7 @@ class Trader:
         cost = import_tariff_obs + transport_fees_obs
         
         margin = 1
-        if cost > -1.5:
+        if cost > -1.4:
             margin = -1         # sign for us to switch to humidity-based one-directional trading
         elif cost >= -2.2:
             margin = 0.2
