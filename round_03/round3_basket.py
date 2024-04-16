@@ -176,7 +176,9 @@ class Trader:
         cost = import_tariff_obs + transport_fees_obs
         
         margin = 1
-        if cost >= -2.2:
+        if cost > -1.5:
+            margin = -1         # sign for us to switch to humidity-based one-directional trading
+        elif cost >= -2.2:
             margin = 0.2
         else:
             margin = - cost - 2
@@ -345,7 +347,7 @@ class Trader:
         return new_starfruit_cache, orders
 
 
-    def compute_orders_orchids(self, product, state: TradingState):
+    def compute_orders_orchids(self, product, state: TradingState, humidity_last):
 
         order_depth: OrderDepth = state.order_depths[product]
         orders: list[Order] = []
@@ -356,6 +358,9 @@ class Trader:
         
         target_inventory = 0
         
+        obuy = collections.OrderedDict(sorted(order_depth.buy_orders.items()))#, reverse=True))
+        _, worst_buy_pr = self.values_extract(obuy, 1)
+
         bid_price_obs = state.observations.conversionObservations[product].bidPrice
         ask_price_obs = state.observations.conversionObservations[product].askPrice
         transport_fees_obs = state.observations.conversionObservations[product].transportFees
@@ -367,16 +372,22 @@ class Trader:
         import_price = ask_price_obs + import_tariff_obs + transport_fees_obs
         export_price = bid_price_obs - export_tariff_obs - transport_fees_obs
 
-        conversions += - self.position[product] + target_inventory
 
         margin = self.calc_orchids_profit_margin(import_tariff_obs, transport_fees_obs)
-        if int(round(import_price + margin)) > import_price:
+        if margin < 0 and humidity_obs < humidity_last:
+            num = max(-order_depth.buy_orders[worst_buy_pr], -position_limit - self.position[product])
+            target_inventory = self.position[product] #so that no conversion request will be placed
+            orders.append(Order(product, worst_buy_pr, num))
+
+        elif int(round(import_price + margin)) > import_price:
           orders.append(Order(product, int(round(import_price + margin)), - position_limit))
+        
         else:
           orders.append(Order(product, int(round(import_price + 0.5)), - position_limit))
-        orders.append(Order(product, int(round(export_price - 2)), position_limit))
-        
-        return orders, conversions
+                
+        conversions += - self.position[product] + target_inventory
+
+        return orders, conversions, humidity_obs
 
 
     def compute_orders_basket(self, order_depth):
@@ -446,7 +457,12 @@ class Trader:
         if "new_starfruit_cache" in decoded_dict.keys():
             new_starfruit_cache = decoded_dict["new_starfruit_cache"]
         
-        # Iterate over all the keys (the available products) contained in the order dephts
+        # Write humidity_last from traderData
+        humidity_last = 0
+        if "humidity_last" in decoded_dict.keys():
+            humidity_last = decoded_dict["humidity_last"]
+
+        # Iterate over all the keys (the available products) contained in the order depths
         for key, val in state.position.items():
             self.position[key] = val
         
@@ -462,7 +478,7 @@ class Trader:
                 orders_result[product] += orders
             
             elif product == "ORCHIDS":
-                orders, conversions = self.compute_orders_orchids(product, state)
+                orders, conversions, humidity_last = self.compute_orders_orchids(product, state, humidity_last)
                 conversions_result += conversions
                 orders_result[product] += orders
 
@@ -478,7 +494,7 @@ class Trader:
             orders_result['ROSES'] += orders['ROSES']
         
         
-        new_dict = {"new_starfruit_cache": new_starfruit_cache}
+        new_dict = {"new_starfruit_cache": new_starfruit_cache, "humidity_last": humidity_last}
         trader_data = jsonpickle.encode(new_dict)
         
         
