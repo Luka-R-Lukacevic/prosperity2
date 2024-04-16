@@ -61,3 +61,23 @@ day_zero <- prices$IMPORT_TARIFF[prices$DAY == "0"]
 # Perform the two-sample KS test
 ks_test_result <- ks.test(day_minus_one, day_zero)
 print(ks_test_result)
+
+
+
+n<-length(prices$HUMIDITY)
+orch_fut<-prices$ORCHIDS[201:n]
+hum<-prices$HUMIDITY[1:(n-200)]
+cor(orch_fut,hum)
+
+
+# Filter indices based on the condition for IMPORT_TARIFF
+filtered_indices <- which(prices$IMPORT_TARIFF > -3)
+
+# Calculate the correlation using these filtered indices
+correlation_result <- cor(
+  prices$HUMIDITY[filtered_indices],  # HUMIDITY for filtered indices
+  prices$ORCHIDS[filtered_indices]    # ORCHIDS for the same filtered indices
+)
+
+# Output the correlation result
+correlation_result
