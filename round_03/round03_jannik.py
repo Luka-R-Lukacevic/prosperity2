@@ -365,21 +365,18 @@ class Trader:
         margin = self.calc_orchids_profit_margin(import_tariff_obs, transport_fees_obs)
 
         if margin < 0 and (new_humidity_cache[1] < new_humidity_cache[0] or new_sunlight_cache[1] < new_sunlight_cache[0]):
-            logger.print("fall 1")
             target_inventory = self.position[product] #so that no conversion request will be placed
             orders.append(Order(product, round((bid_price_obs+ask_price_obs)/2 - 2), -position_limit-self.position[product]))
 
         elif int(round(import_price + margin)) > import_price:
-            logger.print("fall 2")
             orders.append(Order(product, int(round(import_price + margin)), - position_limit))
         
         else:
-            logger.print("fall 3")
             orders.append(Order(product, int(round(import_price + 0.5)), - position_limit))
+        
         orders.append(Order(product, int(round(export_price - 2)), position_limit))
         
         conversions += - self.position[product] + target_inventory
-
 
         return orders, conversions, new_humidity_cache, new_sunlight_cache
 
