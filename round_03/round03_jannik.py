@@ -164,8 +164,12 @@ class Trader:
         margin = 1
         if cost > -1.3:
             margin = -1         # sign for us to switch to humidity-based one-directional trading
-        elif cost >= -2.2:
-            margin = 0.2
+        elif cost > -2:
+            margin = 0.3
+        elif cost >= -2.4:
+            margin = 0.4
+        elif cost < -4.5:
+            margin = 2.5
         else:
             margin = - cost - 2
         
