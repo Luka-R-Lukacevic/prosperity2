@@ -374,11 +374,36 @@ class Trader:
         GIFT_BASKET = 58
         '''
         
-        mean_premium = 379.4905
-        stdev_premium = 76.4243809265
+        #mean_premium = 379.4905
+        #stdev_premium = 76.4243809265
+        #median_ratio = 1.005414
         
-        z_score_for_max_orders = 2
-        z_score_for_strategy_start = 0.7
+        # calculated with mid prices
+        mean_ratio_basket = 1.005397
+        stdev_ratio_basket = 0.00109086
+        
+        mean_ratio_strawberries = 0.05695206302273216
+        stdev_ratio_strawberries = 0.00044331095869549954
+        
+        mean_ratio_chocolate = 0.11193963643517327
+        stdev_ratio_chocolate = 0.0005897757882895246
+        
+        mean_ratio_roses = 0.20516225904987745
+        stdev_ratio_roses = 0.0012106994916070701
+        
+        
+        # Standard deviations of ratio difference when we start buying/selling for mean reversion
+        z_score_for_max_orders_product_1 = 0.71
+        z_score_for_strategy_start_product_1 = 0.7
+        
+        z_score_for_max_orders_product_2 = 2
+        z_score_for_strategy_start_product_2 = 1.5
+        
+        z_score_for_max_orders_product_3 = 0.71
+        z_score_for_strategy_start_product_3 = 0.7
+        
+        z_score_for_max_orders_product_4 = 0.71
+        z_score_for_strategy_start_product_4 = 0.7
         
         product_1 = 'STRAWBERRIES'
         product_2 = 'CHOCOLATE'
@@ -395,17 +420,10 @@ class Trader:
         product_3_order_multiplier = 1
         product_4_order_multiplier = 1
         
-        product_1_inventory_limit = 348
-        product_2_inventory_limit = 232
+        product_1_inventory_limit = 350
+        product_2_inventory_limit = 250
         product_3_inventory_limit = 58
         product_4_inventory_limit = 58
-        
-        trade_opportunities = 58
-        
-        product_1_max_orders = product_1_order_multiplier * trade_opportunities
-        product_2_max_orders = product_2_order_multiplier * trade_opportunities
-        product_3_max_orders = product_3_order_multiplier * trade_opportunities
-        product_4_max_orders = product_4_order_multiplier * trade_opportunities
         
         order_depth_product_1: OrderDepth = state.order_depths[product_1]
         order_depth_product_2: OrderDepth = state.order_depths[product_2]
@@ -419,136 +437,167 @@ class Trader:
         
         best_bid_product_1 = max(order_depth_product_1.buy_orders.keys())
         best_ask_product_1 = min(order_depth_product_1.sell_orders.keys())
-        best_bid_volume_product_1 = abs(list(order_depth_product_1.buy_orders.values())[0])
-        best_bid_avail_units_product_1 = int(best_bid_volume_product_1 / product_1_order_multiplier)
-        best_ask_volume_product_1 = abs(list(order_depth_product_1.sell_orders.values())[0])
-        best_ask_avail_units_product_1 = int(best_ask_volume_product_1 /  product_1_order_multiplier)
         mid_price_product_1 = stat.fmean([best_bid_product_1, best_ask_product_1])
         
         best_bid_product_2 = max(order_depth_product_2.buy_orders.keys())
         best_ask_product_2 = min(order_depth_product_2.sell_orders.keys())
-        best_bid_volume_product_2 = abs(list(order_depth_product_2.buy_orders.values())[0])
-        best_bid_avail_units_product_2 = int(best_bid_volume_product_2 / product_2_order_multiplier)
-        best_ask_volume_product_2 = abs(list(order_depth_product_2.sell_orders.values())[0])
-        best_ask_avail_units_product_2 = int(best_ask_volume_product_2 /  product_2_order_multiplier)
         mid_price_product_2 = stat.fmean([best_bid_product_2, best_ask_product_2])
         
         best_bid_product_3 = max(order_depth_product_3.buy_orders.keys())
         best_ask_product_3 = min(order_depth_product_3.sell_orders.keys())
-        best_bid_volume_product_3 = abs(list(order_depth_product_3.buy_orders.values())[0])
-        best_bid_avail_units_product_3 = int(best_bid_volume_product_3 / product_3_order_multiplier)
-        best_ask_volume_product_3 = abs(list(order_depth_product_3.sell_orders.values())[0])
-        best_ask_avail_units_product_3 = int(best_ask_volume_product_3 /  product_3_order_multiplier)
         mid_price_product_3 = stat.fmean([best_bid_product_3, best_ask_product_3])
         
         best_bid_product_4 = max(order_depth_product_4.buy_orders.keys())
         best_ask_product_4 = min(order_depth_product_4.sell_orders.keys())
-        best_bid_volume_product_4 = abs(list(order_depth_product_4.buy_orders.values())[0])
-        best_bid_avail_units_product_4 = int(best_bid_volume_product_4 / product_4_order_multiplier)
-        best_ask_volume_product_4 = abs(list(order_depth_product_4.sell_orders.values())[0])
-        best_ask_avail_units_product_4 = int(best_ask_volume_product_4 /  product_4_order_multiplier)
         mid_price_product_4 = stat.fmean([best_bid_product_4, best_ask_product_4])
         
-        current_mid_premium = product_4_order_multiplier * mid_price_product_4 - product_3_order_multiplier * mid_price_product_3 - product_2_order_multiplier * mid_price_product_2 - product_1_order_multiplier * mid_price_product_1
-        #current_mid_ratio = product_4_order_multiplier * mid_price_product_4 / ((product_1_order_multiplier * mid_price_product_1) + (product_2_order_multiplier * mid_price_product_2) + (product_3_order_multiplier * mid_price_product_3))
         
-        
-        z_score_mid = (current_mid_premium - mean_premium) / stdev_premium
-        
-        
-        if z_score_mid > z_score_for_strategy_start:
-            
-            #current_ratio = best_bid_product_4/ (best_ask_product_1 + (2*best_ask_product_2) + (4*best_ask_product_3))
-            current_premium = product_4_order_multiplier * best_bid_product_4 - product_3_order_multiplier * best_ask_product_3 - product_2_order_multiplier * best_ask_product_2 - product_1_order_multiplier * best_ask_product_1 
-            #z_score_actual = (current_ratio - mean_ratio) / stdev_ratio
-            z_score_actual = (current_premium - mean_premium) / stdev_premium
-            
-            if z_score_actual > z_score_for_strategy_start :
-                desired_position_product_1 = min((round((z_score_actual / (z_score_for_max_orders - z_score_for_strategy_start)) * trade_opportunities) * product_1_order_multiplier), product_1_max_orders)
-                desired_position_product_2 = min((round((z_score_actual / (z_score_for_max_orders - z_score_for_strategy_start)) * trade_opportunities) * product_2_order_multiplier), product_2_max_orders)
-                desired_position_product_3 = min((round((z_score_actual / (z_score_for_max_orders - z_score_for_strategy_start)) * trade_opportunities) * product_3_order_multiplier), product_3_max_orders)
-                desired_position_product_4 = -min((round((z_score_actual / (z_score_for_max_orders - z_score_for_strategy_start)) * trade_opportunities) * product_4_order_multiplier), product_4_max_orders)
-                
-                if desired_position_product_1 >= product_1_inventory_limit:
-                    desired_position_product_1 = product_1_inventory_limit
-                    desired_position_product_2 = product_2_inventory_limit
-                    desired_position_product_3 = product_3_inventory_limit
-                    desired_position_product_4 = - product_4_inventory_limit
-            else:
-                desired_position_product_1 = 0
-                desired_position_product_2 = 0
-                desired_position_product_3 = 0
-                desired_position_product_4 = 0
-            
-        elif z_score_mid < - z_score_for_strategy_start:
-            #current_ratio = best_ask_product_4/(best_bid_product_1 + (2*best_bid_product_2) + (4*best_bid_product_3))
-            current_premium = product_4_order_multiplier * best_bid_product_4 - product_3_order_multiplier * best_ask_product_3 - product_2_order_multiplier * best_ask_product_2 - product_1_order_multiplier * best_ask_product_1
-            
-            #z_score_actual = (current_ratio - mean_ratio) / stdev_ratio
-            z_score_actual = (current_premium - mean_premium) / stdev_premium
-            
-            if z_score_actual < - z_score_for_strategy_start:
-                desired_position_product_1 = min((round((z_score_actual / (z_score_for_max_orders - z_score_for_strategy_start)) * trade_opportunities) * product_1_order_multiplier), product_1_max_orders)
-                desired_position_product_2 = min((round((z_score_actual / (z_score_for_max_orders - z_score_for_strategy_start)) * trade_opportunities) * product_2_order_multiplier), product_2_max_orders)
-                desired_position_product_3 = min((round((z_score_actual / (z_score_for_max_orders - z_score_for_strategy_start)) * trade_opportunities) * product_3_order_multiplier), product_3_max_orders)
-                desired_position_product_4 = -min((round((z_score_actual / (z_score_for_max_orders - z_score_for_strategy_start)) * trade_opportunities) * product_4_order_multiplier), product_4_max_orders)
-                
-                if desired_position_product_4 >= product_4_inventory_limit:
-                    desired_position_product_1 = - product_1_inventory_limit
-                    desired_position_product_2 = - product_2_inventory_limit
-                    desired_position_product_3 = - product_3_inventory_limit
-                    desired_position_product_4 = product_4_inventory_limit
-                    
+        ###########################################################################################
+        #############      Strategy for product 1 -- Strawberries     #############################
+        ###########################################################################################
 
-                #print(z_score_mid, z_score_actual)
-            else:
-                desired_position_product_1 = 0
-                desired_position_product_2 = 0
-                desired_position_product_3 = 0
-                desired_position_product_4 = 0
+        current_mid_ratio = mid_price_product_1 / mid_price_product_4 
+        z_score_mid = (current_mid_ratio - mean_ratio_strawberries) / stdev_ratio_strawberries
+        
+        
+        if z_score_mid > z_score_for_strategy_start_product_1:
+            desired_position_product_1 = -min(round(((z_score_mid - z_score_for_strategy_start_product_1) / (z_score_for_max_orders_product_1 - z_score_for_strategy_start_product_1)) * product_1_inventory_limit), product_1_inventory_limit)
+            
+        elif z_score_mid < - z_score_for_strategy_start_product_1:
+            desired_position_product_1 = min(round(((- z_score_mid - z_score_for_strategy_start_product_1) / (z_score_for_max_orders_product_1 - z_score_for_strategy_start_product_1)) * product_1_inventory_limit), product_1_inventory_limit)
         else:
             desired_position_product_1 = 0
+        
+        if initial_position_product_1 <= 0 and z_score_mid > 0: 
+            if initial_position_product_1 > desired_position_product_1:
+                # Add more short 1
+                product_1_orders.append(Order(product_1, best_bid_product_1, -abs(desired_position_product_1 - initial_position_product_1)))
+
+        elif initial_position_product_1 < 0 and z_score_mid <= 0:
+            # Neutralize everything we have
+            product_1_orders.append(Order(product_1, best_ask_product_1, abs(desired_position_product_1 - initial_position_product_1)))
+
+        elif initial_position_product_1 > 0 and z_score_mid >= 0: 
+            # Neutralize everything we have
+            product_1_orders.append(Order(product_1, best_bid_product_1, -abs(desired_position_product_1 - initial_position_product_1)))
+            
+        elif initial_position_product_1 >= 0 and z_score_mid < 0:
+            if initial_position_product_1 < desired_position_product_1:
+                #add more long 1
+                product_1_orders.append(Order(product_1, best_ask_product_1, abs(desired_position_product_1 - initial_position_product_1)))
+
+        
+        
+        ###########################################################################################
+        #############       Strategy for product 2 -- Chocolate       #############################
+        ###########################################################################################
+        
+        
+
+        current_mid_ratio = mid_price_product_2 / mid_price_product_4 
+        z_score_mid = (current_mid_ratio - mean_ratio_chocolate) / stdev_ratio_chocolate
+        
+        
+        if z_score_mid > z_score_for_strategy_start_product_2:
+            desired_position_product_2 = -min(round(((z_score_mid - z_score_for_strategy_start_product_2) / (z_score_for_max_orders_product_2 - z_score_for_strategy_start_product_2)) * product_2_inventory_limit), product_2_inventory_limit)
+            
+        elif z_score_mid < - z_score_for_strategy_start_product_2:
+            desired_position_product_2 = min(round(((- z_score_mid - z_score_for_strategy_start_product_2) / (z_score_for_max_orders_product_2 - z_score_for_strategy_start_product_2)) * product_2_inventory_limit), product_2_inventory_limit)
+        else:
             desired_position_product_2 = 0
+        
+        if initial_position_product_2 <= 0 and z_score_mid > 0: 
+            if initial_position_product_2 > desired_position_product_2:
+                # Add more short 2
+                product_2_orders.append(Order(product_2, best_bid_product_2, -abs(desired_position_product_2 - initial_position_product_2)))
+
+        elif initial_position_product_2 < 0 and z_score_mid <= 0:
+            # Neutralize everything we have
+            product_2_orders.append(Order(product_2, best_ask_product_2, abs(desired_position_product_2 - initial_position_product_2)))
+
+        elif initial_position_product_2 > 0 and z_score_mid >= 0: 
+            # Neutralize everything we have
+            product_2_orders.append(Order(product_2, best_bid_product_2, -abs(desired_position_product_2 - initial_position_product_2)))
+            
+        elif initial_position_product_2 >= 0 and z_score_mid < 0:
+            if initial_position_product_2 < desired_position_product_2:
+                #add more long 2
+                product_2_orders.append(Order(product_2, best_ask_product_2, abs(desired_position_product_2 - initial_position_product_2)))
+
+
+        
+        ###########################################################################################
+        #############         Strategy for product 3 -- Roses         #############################
+        ###########################################################################################
+
+        current_mid_ratio = mid_price_product_3 / mid_price_product_4 
+        z_score_mid = (current_mid_ratio - mean_ratio_roses) / stdev_ratio_roses
+        
+        
+        if z_score_mid > z_score_for_strategy_start_product_3:
+            desired_position_product_3 = -min(round(((z_score_mid - z_score_for_strategy_start_product_3) / (z_score_for_max_orders_product_3 - z_score_for_strategy_start_product_3)) * product_3_inventory_limit), product_3_inventory_limit)
+            
+        elif z_score_mid < - z_score_for_strategy_start_product_3:
+            desired_position_product_3 = min(round(((- z_score_mid - z_score_for_strategy_start_product_3) / (z_score_for_max_orders_product_3 - z_score_for_strategy_start_product_3)) * product_3_inventory_limit), product_3_inventory_limit)
+        else:
             desired_position_product_3 = 0
+        
+        if initial_position_product_3 <= 0 and z_score_mid > 0: 
+            if initial_position_product_3 > desired_position_product_3:
+                # Add more short 3
+                product_3_orders.append(Order(product_3, best_bid_product_3, -abs(desired_position_product_3 - initial_position_product_3)))
+
+        elif initial_position_product_3 < 0 and z_score_mid <= 0:
+            # Neutralize everything we have
+            product_3_orders.append(Order(product_3, best_ask_product_3, abs(desired_position_product_3 - initial_position_product_3)))
+
+        elif initial_position_product_3 > 0 and z_score_mid >= 0: 
+            # Neutralize everything we have
+            product_3_orders.append(Order(product_3, best_bid_product_3, -abs(desired_position_product_3 - initial_position_product_3)))
+            
+        elif initial_position_product_3 >= 0 and z_score_mid < 0:
+            if initial_position_product_3 < desired_position_product_3:
+                #add more long 3
+                product_3_orders.append(Order(product_3, best_ask_product_3, abs(desired_position_product_3 - initial_position_product_3)))
+
+
+
+        
+        ###########################################################################################
+        #############      Strategy for product 4 -- Gift Basket      #############################
+        ###########################################################################################
+        
+        current_mid_ratio = product_4_order_multiplier * mid_price_product_4 / ((product_1_order_multiplier * mid_price_product_1) + (product_2_order_multiplier * mid_price_product_2) + (product_3_order_multiplier * mid_price_product_3))
+        z_score_mid = (current_mid_ratio - mean_ratio_basket) / stdev_ratio_basket
+        
+        
+        if z_score_mid > z_score_for_strategy_start_product_4:
+            desired_position_product_4 = -min(round(((z_score_mid - z_score_for_strategy_start_product_4) / (z_score_for_max_orders_product_4 - z_score_for_strategy_start_product_4)) * product_4_inventory_limit), product_4_inventory_limit)
+            
+        elif z_score_mid < - z_score_for_strategy_start_product_4:
+            desired_position_product_4 = min(round(((- z_score_mid - z_score_for_strategy_start_product_4) / (z_score_for_max_orders_product_4 - z_score_for_strategy_start_product_4)) * product_4_inventory_limit), product_4_inventory_limit)
+        else:
             desired_position_product_4 = 0
         
-        
-        if initial_position_product_1 >= 0 and z_score_mid > 0: 
-            if initial_position_product_1 < desired_position_product_1:
-                # Add more, long 1,2,3 short 4
-                available_units = min(best_ask_avail_units_product_1, best_ask_avail_units_product_2, best_ask_avail_units_product_3, best_bid_avail_units_product_4)
-                product_1_orders.append(Order(product_1, best_ask_product_1, min((available_units * product_1_order_multiplier), abs(desired_position_product_1 - initial_position_product_1))))
-                product_2_orders.append(Order(product_2, best_ask_product_2, min((available_units * product_2_order_multiplier), abs(desired_position_product_2 - initial_position_product_2))))
-                product_3_orders.append(Order(product_3, best_ask_product_3, min((available_units * product_3_order_multiplier), abs(desired_position_product_3 - initial_position_product_3))))
-                product_4_orders.append(Order(product_4, best_bid_product_4, -min((available_units * product_4_order_multiplier), abs(desired_position_product_4 - initial_position_product_4))))
-                
-            
-        elif initial_position_product_1 > 0 and z_score_mid <= 0:
+        if initial_position_product_4 <= 0 and z_score_mid > 0: 
+            if initial_position_product_4 > desired_position_product_4:
+                # Add more short 4
+                product_4_orders.append(Order(product_4, best_bid_product_4, -abs(desired_position_product_4 - initial_position_product_4)))
+
+        elif initial_position_product_4 < 0 and z_score_mid <= 0:
             # Neutralize everything we have
-            available_units = min(best_bid_avail_units_product_1, best_bid_avail_units_product_2, best_bid_avail_units_product_3, best_ask_avail_units_product_4)
-            product_1_orders.append(Order(product_1, best_bid_product_1, - min((available_units * product_1_order_multiplier), abs(desired_position_product_1 - initial_position_product_1))))
-            product_2_orders.append(Order(product_2, best_bid_product_2, - min((available_units * product_2_order_multiplier), abs(desired_position_product_2 - initial_position_product_2))))
-            product_3_orders.append(Order(product_3, best_bid_product_3, - min((available_units * product_3_order_multiplier), abs(desired_position_product_3 - initial_position_product_3))))
-            product_4_orders.append(Order(product_4, best_ask_product_4, min((available_units * product_4_order_multiplier), abs(desired_position_product_4 - initial_position_product_4))))
-        
-        
-        elif initial_position_product_1 < 0 and z_score_mid >= 0: 
+            product_4_orders.append(Order(product_4, best_ask_product_4, abs(desired_position_product_4 - initial_position_product_4)))
+
+        elif initial_position_product_4 > 0 and z_score_mid >= 0: 
             # Neutralize everything we have
-            available_units = min(best_ask_avail_units_product_1, best_ask_avail_units_product_2, best_ask_avail_units_product_3, best_bid_avail_units_product_4)
-            product_1_orders.append(Order(product_1, best_ask_product_1, min((available_units * product_1_order_multiplier), abs(desired_position_product_1 - initial_position_product_1))))
-            product_2_orders.append(Order(product_2, best_ask_product_2, min((available_units * product_2_order_multiplier), abs(desired_position_product_2 - initial_position_product_2))))
-            product_3_orders.append(Order(product_3, best_ask_product_3, min((available_units * product_3_order_multiplier), abs(desired_position_product_3 - initial_position_product_3))))
-            product_4_orders.append(Order(product_4, best_bid_product_4, -min((available_units * product_4_order_multiplier), abs(desired_position_product_4 - initial_position_product_4))))
+            product_4_orders.append(Order(product_4, best_bid_product_4, -abs(desired_position_product_4 - initial_position_product_4)))
             
-            
-        elif initial_position_product_1 <= 0 and z_score_mid < 0:
-            if initial_position_product_1 > desired_position_product_1:
-                #add more, short 1,2,3 long 4
-                available_units = min(best_bid_avail_units_product_1, best_bid_avail_units_product_2, best_bid_avail_units_product_3, best_ask_avail_units_product_4)
-                product_1_orders.append(Order(product_1, best_bid_product_1, - min((available_units * product_1_order_multiplier), abs(desired_position_product_1 - initial_position_product_1))))
-                product_2_orders.append(Order(product_2, best_bid_product_2, - min((available_units * product_2_order_multiplier), abs(desired_position_product_2 - initial_position_product_2))))
-                product_3_orders.append(Order(product_3, best_bid_product_3, - min((available_units * product_3_order_multiplier), abs(desired_position_product_3 - initial_position_product_3))))
-                product_4_orders.append(Order(product_4, best_ask_product_4, min((available_units * product_4_order_multiplier), abs(desired_position_product_4 - initial_position_product_4))))
+        elif initial_position_product_4 >= 0 and z_score_mid < 0:
+            if initial_position_product_4 < desired_position_product_4:
+                #add more long 4
+                product_4_orders.append(Order(product_4, best_ask_product_4, abs(desired_position_product_4 - initial_position_product_4)))
+        
+        
         
         
         return product_1_orders, product_2_orders, product_3_orders, product_4_orders
