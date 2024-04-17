@@ -623,20 +623,20 @@ class Trader:
             self.position[key] = val
         
         
-        #for product in ['AMETHYSTS', 'STARFRUIT', "ORCHIDS"]:
-        #
-        #    if product == "AMETHYSTS":
-        #        orders = self.compute_orders_amethysts(product, state)
-        #        orders_result[product] += orders
-        #    
-        #    elif product == "STARFRUIT":
-        #        new_starfruit_cache, orders = self.compute_orders_starfruit(product, state, new_starfruit_cache)
-        #        orders_result[product] += orders
-        #    
-        #    elif product == "ORCHIDS":
-        #        orders, conversions = self.compute_orders_orchids(product, state)
-        #        conversions_result += conversions
-        #        orders_result[product] += orders
+        for product in ['AMETHYSTS', 'STARFRUIT', "ORCHIDS"]:
+        
+            if product == "AMETHYSTS":
+                orders = self.compute_orders_amethysts(product, state)
+                orders_result[product] += orders
+            
+            elif product == "STARFRUIT":
+                new_starfruit_cache, orders = self.compute_orders_starfruit(product, state, new_starfruit_cache)
+                orders_result[product] += orders
+            
+            elif product == "ORCHIDS":
+                orders, conversions = self.compute_orders_orchids(product, state)
+                conversions_result += conversions
+                orders_result[product] += orders
         
         if 'CHOCOLATE' in state.order_depths.keys() and 'STRAWBERRIES' in state.order_depths.keys() and 'ROSES' in state.order_depths.keys() and 'GIFT_BASKET' in state.order_depths.keys():
             strawberry_orders, chocolate_orders, roses_orders, gift_basket_orders = self.compute_orders_basket(state)
