@@ -162,10 +162,12 @@ class Trader:
         cost = import_tariff_obs + transport_fees_obs
         
         margin = 1
-        if cost >= -1:
-            margin = 0.5
+        if cost > -1.3:
+            margin = -1         # sign for us to switch to humidity-based one-directional trading
+        elif cost >= -2.2:
+            margin = 0.2
         else:
-            margin = (-1/2) * cost
+            margin = - cost - 2
         
         return margin
 
@@ -331,7 +333,7 @@ class Trader:
         return new_starfruit_cache, orders
 
 
-    def compute_orders_orchids(self, product, state: TradingState):
+    def compute_orders_orchids(self, product, state: TradingState, new_humidity_cache, new_sunlight_cache):
 
         order_depth: OrderDepth = state.order_depths[product]
         orders: list[Order] = []
@@ -353,14 +355,33 @@ class Trader:
         import_price = ask_price_obs + import_tariff_obs + transport_fees_obs
         export_price = bid_price_obs - export_tariff_obs - transport_fees_obs
 
-        conversions += - self.position[product] + target_inventory
+        if len(new_humidity_cache) == 200:
+            new_humidity_cache.pop(0)
+            new_sunlight_cache.pop(0)
+
+        new_humidity_cache.append(humidity_obs)
+        new_sunlight_cache.append(sunlight_obs)
 
         margin = self.calc_orchids_profit_margin(import_tariff_obs, transport_fees_obs)
+
+        if margin < 0 and (new_humidity_cache[1] < new_humidity_cache[0] or new_sunlight_cache[1] < new_sunlight_cache[0]):
+            logger.print("fall 1")
+            target_inventory = self.position[product] #so that no conversion request will be placed
+            orders.append(Order(product, round((bid_price_obs+ask_price_obs)/2 - 2), -position_limit-self.position[product]))
+
+        elif int(round(import_price + margin)) > import_price:
+            logger.print("fall 2")
+            orders.append(Order(product, int(round(import_price + margin)), - position_limit))
         
-        orders.append(Order(product, int(round(import_price + margin)), - position_limit))
+        else:
+            logger.print("fall 3")
+            orders.append(Order(product, int(round(import_price + 0.5)), - position_limit))
         orders.append(Order(product, int(round(export_price - 2)), position_limit))
         
-        return orders, conversions
+        conversions += - self.position[product] + target_inventory
+
+
+        return orders, conversions, new_humidity_cache, new_sunlight_cache
 
 
     def compute_orders_basket(self, state: TradingState):
@@ -613,10 +634,18 @@ class Trader:
         if state.traderData:
             decoded_dict = jsonpickle.decode(state.traderData)
         
-        # Write starfruit cache from traderData
+        # Write starfruit cache, humidity cache and sunlight cache from traderData
         new_starfruit_cache = []
         if "new_starfruit_cache" in decoded_dict.keys():
             new_starfruit_cache = decoded_dict["new_starfruit_cache"]
+
+        new_humidity_cache = [0]
+        if "new_humidity_cache" in decoded_dict.keys():
+            new_humidity_cache = decoded_dict["new_humidity_cache"]
+
+        new_sunlight_cache = [0]
+        if "new_sunlight_cache" in decoded_dict.keys():
+            new_sunlight_cache = decoded_dict["new_sunlight_cache"]
         
         # Iterate over all the keys (the available products) contained in the order dephts
         for key, val in state.position.items():
@@ -634,7 +663,7 @@ class Trader:
                 orders_result[product] += orders
             
             elif product == "ORCHIDS":
-                orders, conversions = self.compute_orders_orchids(product, state)
+                orders, conversions, new_humidity_cache, new_sunlight_cache = self.compute_orders_orchids(product, state, new_humidity_cache, new_sunlight_cache)
                 conversions_result += conversions
                 orders_result[product] += orders
         
@@ -647,7 +676,7 @@ class Trader:
             orders_result['GIFT_BASKET'] += gift_basket_orders
         
         
-        new_dict = {"new_starfruit_cache": new_starfruit_cache}
+        new_dict = {"new_starfruit_cache": new_starfruit_cache, "new_humidity_cache": new_humidity_cache, "new_sunlight_cache": new_sunlight_cache}
         trader_data = jsonpickle.encode(new_dict)
         
         
