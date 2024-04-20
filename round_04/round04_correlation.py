@@ -557,9 +557,7 @@ class Trader:
     def compute_orders_c_and_cc(self, order_depths):
         orders = {'COCONUT' : [], 'COCONUT_COUPON' : []}
         prods = ['COCONUT', 'COCONUT_COUPON']
-        coef = 0.0635
-        std = 46.6
-        osell, obuy, best_sell, best_buy, worst_sell, worst_buy, mid_price, vol_buy, vol_sell = {}, {}, {}, {}, {}, {}, {}, {}, {}
+        osell, obuy, best_sell, best_buy, worst_sell, worst_buy, mid_price = {}, {}, {}, {}, {}, {}, {}
         for p in prods:
             osell[p] = collections.OrderedDict(sorted(order_depths[p].sell_orders.items()))
             obuy[p] = collections.OrderedDict(sorted(order_depths[p].buy_orders.items(), reverse=True))
@@ -571,26 +569,21 @@ class Trader:
             worst_buy[p] = next(reversed(obuy[p]))
 
             mid_price[p] = (best_sell[p] + best_buy[p])/2
-            vol_buy[p], vol_sell[p] = 0, 0
-            for price, vol in obuy[p].items():
-                vol_buy[p] += vol 
-                
-            for price, vol in osell[p].items():
-                vol_sell[p] += -vol 
+
 
         x = mid_price['COCONUT_COUPON']
         z = (16730 - 38.13 * x + 0.06702 * x ** 2 - 0.00003722 * x ** 3)
         res = mid_price['COCONUT'] - z
         logger.print("res: ", res, "coconut: ", mid_price['COCONUT'], "z:", z)
     
-        desired_coco_pos = -res * 300 / 80
-        desired_coco_coupon_pos = res * 600 / 80
+        desired_coco_pos = -res * 300 / 45
+        desired_coco_coupon_pos = res * 600 / 45
     
         current_coco_pos = self.position['COCONUT']
         current_coco_coupon_pos = self.position['COCONUT_COUPON']
     
-        coco_vol_to_trade = int(desired_coco_pos - current_coco_pos) if abs(desired_coco_pos - current_coco_pos) > 30 else 0
-        coco_coupon_vol_to_trade = int(desired_coco_coupon_pos - current_coco_coupon_pos) if abs(desired_coco_coupon_pos - current_coco_coupon_pos)) > 60 else 0
+        coco_vol_to_trade = int(desired_coco_pos - current_coco_pos) if abs(desired_coco_pos - current_coco_pos) > 60 else 0
+        coco_coupon_vol_to_trade = int(desired_coco_coupon_pos - current_coco_coupon_pos) if abs(desired_coco_coupon_pos - current_coco_coupon_pos) > 120 else 0
         logger.print("position: ", current_coco_pos)
         logger.print("desired_coco_pos: ", desired_coco_pos, coco_vol_to_trade)
         
