@@ -184,12 +184,11 @@ class Trader:
 
     def black_scholes_call_price(self, S, X, T, r, sigma):
         '''Calculation of black scholes call price and delta'''
-        average_call_diff = -14.473940223682074
         d1 = (math.log(S / X) + (r + (sigma ** 2) / 2) * T) / (sigma * math.sqrt(T))
         d2 = d1 - sigma * math.sqrt(T)
         N_d1 = self.norm_cdf(d1)
         N_d2 = self.norm_cdf(d2)
-        call_value = S * N_d1 - X * math.exp(-r * T) * N_d2 + average_call_diff
+        call_value = S * N_d1 - X * math.exp(-r * T) * N_d2
         return call_value, N_d1
 
 
@@ -524,11 +523,11 @@ class Trader:
         
         
         X = 10000                       # Exercise price
-        T = 250/252                     # Time until expiration, in years
+        T = 246/365                     # Time until expiration, in years
         r = 0.0                         # Risk-free interest rate
-        sigma = 0.16341161830472062     # Expected annualized volatility = historical volatility
+        sigma = 0.19314                 # Expected annualized volatility = given from premium at the first time step
         
-        call_price_stdev = 13.479148432867905
+        call_price_stdev = 13.468083665890335
         z_score_start = 0.7
         z_score_max_orders = 0.700001
         product_1_inventory_limit = 300
@@ -542,16 +541,15 @@ class Trader:
         
         if z_score_call_price > z_score_start:
             # short coupon, long coconut --> coupon is overpriced
-            desired_position_product_1 = min(round(((z_score_call_price - z_score_start) / (z_score_max_orders - z_score_start)) * product_1_inventory_limit), product_1_inventory_limit)
             desired_position_product_2 = -min(round(((z_score_call_price - z_score_start) / (z_score_max_orders - z_score_start)) * product_2_inventory_limit), product_2_inventory_limit)
             
         elif z_score_call_price < - z_score_start:
             # long coupon, short coconut --> coupon is underpriced
-            desired_position_product_1 = -min(round(((- z_score_call_price - z_score_start) / (z_score_max_orders - z_score_start)) * product_1_inventory_limit), product_1_inventory_limit)
             desired_position_product_2 = min(round(((- z_score_call_price - z_score_start) / (z_score_max_orders - z_score_start)) * product_2_inventory_limit), product_2_inventory_limit)
         else:
-            desired_position_product_1 = 0
             desired_position_product_2 = 0
+        
+        desired_position_product_1 = - 0.5 * desired_position_product_2
         
         if initial_position_product_2 <= 0 and z_score_call_price > 0: 
             if initial_position_product_2 > desired_position_product_2:
@@ -574,7 +572,6 @@ class Trader:
                 #add more long 2, short 1
                 product_1_orders.append(Order(product_1, best_bid_product_1, -abs(desired_position_product_1 - initial_position_product_1)))
                 product_2_orders.append(Order(product_2, best_ask_product_2, abs(desired_position_product_2 - initial_position_product_2)))
-        
         
         
         return product_1_orders, product_2_orders
@@ -625,7 +622,7 @@ class Trader:
                 conversions_result += conversions
                 orders_result[product] += orders
             
-            if product == 'COCONUT':
+            elif product == 'COCONUT':
                 coconut_orders, coupon_orders = self.compute_orders_coco(state)
                 orders_result['COCONUT'] += coconut_orders
                 orders_result['COCONUT_COUPON'] += coupon_orders
