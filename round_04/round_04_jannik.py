@@ -549,7 +549,7 @@ class Trader:
         else:
             desired_position_product_2 = 0
         
-        desired_position_product_1 = - 0.5 * desired_position_product_2
+        desired_position_product_1 = round( - 0.5 * desired_position_product_2)
         
         if initial_position_product_2 <= 0 and z_score_call_price > 0: 
             if initial_position_product_2 > desired_position_product_2:
