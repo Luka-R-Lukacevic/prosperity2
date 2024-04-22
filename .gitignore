@@ -2,3 +2,15 @@ round_01/Regression/regression_jannik.ipynb
 round_01/datamodel.py
 round_02/datamodel.py
 round_03/datamodel.py
+round_05/cheat/app.py
+round_05/cheat/attack_trader.py
+round_05/cheat/bananas_trader.py
+round_05/cheat/Dockerfile
+round_05/cheat/orchids_trader.py
+round_05/cheat/orderbook.py
+round_05/cheat/products.py
+round_05/cheat/symbols.py
+round_05/cheat/trader_no_orders.py
+round_05/cheat/test.ipynb
+round_05/cheat/datamodel.py
+round_05/datamodel.py
