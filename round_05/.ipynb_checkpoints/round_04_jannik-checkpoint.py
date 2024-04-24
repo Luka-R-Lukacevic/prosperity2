@@ -122,7 +122,7 @@ logger = Logger()
 class Trader:
 
     position = copy.deepcopy(empty_dict)
-    POSITION_LIMIT = {'AMETHYSTS' : 20, 'STARFRUIT' : 20, 'ORCHIDS' : 100, 'STRAWBERRIES' : 350, 'CHOCOLATE' : 250, 'ROSES' : 60, 'GIFT_BASKET' : 60, 'COCONUT' : 300, 'COCONUT_COUPON' : 600}
+    POSITION_LIMIT = {'AMETHYSTS' : 20, 'STARFRUIT' : 20, 'ORCHIDS' : 100,'STRAWBERRIES' : 350, 'CHOCOLATE' : 250, 'ROSES' : 60, 'GIFT_BASKET' : 60, 'COCONUT' : 300, 'COCONUT_COUPON' : 600}
     volume_traded = copy.deepcopy(empty_dict)
     
     
@@ -375,7 +375,7 @@ class Trader:
         import_price = ask_price_obs + import_tariff_obs + transport_fees_obs
         export_price = bid_price_obs - export_tariff_obs - transport_fees_obs
 
-        if len(new_humidity_cache) == 100:
+        if len(new_humidity_cache) == 200:
             new_humidity_cache.pop(0)
             new_sunlight_cache.pop(0)
 
@@ -399,29 +399,6 @@ class Trader:
         conversions += - self.position[product] + target_inventory
 
         return orders, conversions, new_humidity_cache, new_sunlight_cache
-
-
-    def compute_orders_roses(self, state: TradingState, rhianna_last_trade):
-        '''
-        We just copy Rhianna. So whenever Rhianna made a trade we will just try to achieve a position as her.
-        '''
-        p = "ROSES"
-        orders = []
-        osell, obuy, worst_sell, worst_buy = {}, {}, {}, {}
-        osell[p] = collections.OrderedDict(sorted(state.order_depths[p].sell_orders.items()))
-        obuy[p] = collections.OrderedDict(sorted(state.order_depths[p].buy_orders.items(), reverse=True))
-        
-        worst_sell[p] = next(reversed(osell[p]))
-        worst_buy[p] = next(reversed(obuy[p]))
-
-        if rhianna_last_trade > 0:
-            orders.append(Order(p, worst_sell[p], 60-self.position[p]))
-        elif rhianna_last_trade < 0:
-            orders.append(Order(p, worst_buy[p], -60-self.position[p]))
-        
-        return orders
-            
-            
 
 
     def compute_orders_basket(self, state: TradingState):
@@ -546,7 +523,7 @@ class Trader:
         
         
         X = 10000                       # Exercise price
-        T = 245/365                     # Time until expiration, in years
+        T = 246/365                     # Time until expiration, in years
         r = 0.0                         # Risk-free interest rate
         sigma = 0.19314                 # Expected annualized volatility = given from premium at the first time step
         
@@ -623,29 +600,12 @@ class Trader:
         new_sunlight_cache = [0]
         if "new_sunlight_cache" in decoded_dict.keys():
             new_sunlight_cache = decoded_dict["new_sunlight_cache"]
-
-        rhianna_last_trade = 0
-        if "rhianna_last_trade" in decoded_dict.keys():
-            rhianna_last_trade = decoded_dict["rhianna_last_trade"]
-        
-        if "ROSES" in state.market_trades.keys():
-            for trade in state.market_trades['ROSES']:
-                if "Rhianna" == trade.buyer:
-                    rhianna_last_trade = 1
-                elif "Rhianna" == trade.seller:
-                    rhianna_last_trade = -1
-        if "ROSES" in state.own_trades.keys():
-            for trade in state.own_trades['ROSES']:
-                if "Rhianna" == trade.buyer:
-                    rhianna_last_trade = 1
-                elif "Rhianna" == trade.seller:
-                    rhianna_last_trade = -1
-            
-        
         
         # Iterate over all the keys (the available products) contained in the order dephts
         for key, val in state.position.items():
             self.position[key] = val
+        
+        
         
         for product in ['AMETHYSTS', 'STARFRUIT', "ORCHIDS", 'COCONUT']:
         
@@ -657,7 +617,7 @@ class Trader:
                 new_starfruit_cache, orders = self.compute_orders_starfruit(product, state, new_starfruit_cache)
                 orders_result[product] += orders
             
-            if product == "ORCHIDS":
+            elif product == "ORCHIDS":
                 orders, conversions, new_humidity_cache, new_sunlight_cache = self.compute_orders_orchids(product, state, new_humidity_cache, new_sunlight_cache)
                 conversions_result += conversions
                 orders_result[product] += orders
@@ -669,12 +629,10 @@ class Trader:
         
         if 'CHOCOLATE' in state.order_depths.keys() and 'STRAWBERRIES' in state.order_depths.keys() and 'ROSES' in state.order_depths.keys() and 'GIFT_BASKET' in state.order_depths.keys():
             gift_basket_orders = self.compute_orders_basket(state)
-            roses_orders = self.compute_orders_roses(state, rhianna_last_trade)
             orders_result['GIFT_BASKET'] += gift_basket_orders
-            orders_result['ROSES'] += roses_orders
         
         
-        new_dict = {"new_starfruit_cache": new_starfruit_cache, "new_humidity_cache": new_humidity_cache, "new_sunlight_cache": new_sunlight_cache, "rhianna_last_trade": rhianna_last_trade}
+        new_dict = {"new_starfruit_cache": new_starfruit_cache, "new_humidity_cache": new_humidity_cache, "new_sunlight_cache": new_sunlight_cache}
         trader_data = jsonpickle.encode(new_dict)
         
         
