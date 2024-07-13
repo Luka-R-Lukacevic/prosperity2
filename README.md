@@ -91,18 +91,16 @@ Jasper van Merle's [visualizer](https://jmerle.github.io/imc-prosperity-2-visual
 
 </details>
 <details>
-<summary><h2>round 1️⃣</h2></summary>
+<summary><h2>Round 1️⃣</h2></summary>
 
 In round 1, we had access to two symbols to trade: amethysts and starfruit. 
 
-### amethysts 🔮
-Amethysts were fairly simple, as the fair price clearly never deviated from 10,000. As such, we wrote our algorithm to trade against bids above 10,000 and asks below 10,000. Besides taking orders, our algorithm also would market-make, placing bids and asks below and above 10,000, respectively, with a certain edge. Using our backtester, we gridsearched over several different values to find the most profitable edge to request. This worked well, getting us about 16k seashells over backtests
+### Amethysts
+Amethysts were fairly simple, as the fair price clearly never deviated from 10,000. As such, we wrote our algorithm to trade against bids above 10,000 and asks below 10,000. Besides taking orders, our algorithm also would market-make, placing bids and asks below and above 10,000, respectively, with a certain edge.
 
-However, through looking at backtest logs in our dashapp, we discovered that many profitable trades were prevented by our position limits, as we were unable to long or short more than 20 amethysts (and starfruit) at any given moment. To fix this issue, we implemented a strategy to clear our position–our algorithm would do 0 ev trades, if available, just to get our position closer to 0, so that we'd be able to do more positive ev trades later on. This strategy bumped our pnl up by about 3%. 
+### Starfruit
 
-### starfruit ⭐
-
-Finding a good fair price for starfruit was tougher, as its price wasn't fixed–it would slowly randomwalk around. Nonetheless, we observed that the price was relatively stable locally. So we created a fair using a rolling average of the mid price over the last *n* timestamps, where *n* was a parameter which we could optimize over in backtests[^1]. Market-making, taking, and clearing (the same strategies we did with amethysts) worked quite well around this fair value. 
+Finding a good fair price for starfruit was tougher, as its price wasn't fixed–it would randomly walk around. Nonetheless, we observed that the price was relatively stable locally. So we created a fair using a rolling average of the mid price over the last *n* timestamps, where *n* was a parameter which we could optimize over in backtests[^1]. Market-making, taking, and clearing (the same strategies we did with amethysts) worked quite well around this fair value. 
 
 However, using the mid price–even in averaging over it–didn't seem to be the best, as the mid price was noisy from market participants continually putting orders past mid (orders that we thought were good to fair and therefore ones that we wanted to trade against). Looking at the orderbook, we found out that, at all times, there was a market making bot quoting relatively large sizes on both sides, at prices that were unaffected by smaller participants[^2]. Using this market maker's mid price as a fair turned out to be much less noisy and generated more pnl in backtests. 
 
@@ -118,9 +116,9 @@ After round 1, our team was ranked #3 in the world overall. We had an algo tradi
 </details>
 
 <details>
-<summary><h2>round 2️⃣</h2></summary>
+<summary><h2>Round 2️⃣</h2></summary>
   
-### orchids 🥀
+### Orchids
 Orchids were introduced in round 2, as well as a bunch of data on sunlight, humidity, import/export tariffs, and shipping costs. The premise was that orchids were grown on a separate island[^4], and had to be imported–subject to import tariffs and shipping costs, and that they would degrade with suboptimal levels of sunlight and humidity. We were able to trade orchids both in a market on our own island, as well as through importing them from the South archipelago. With this, we had two initial approaches. The obvious approach, to us, was to look for alpha in all the data available, investigating if the price of orchids could be predicted using sunlight, humidity, etc. The other approach involved understanding exactly how the mechanisms for trading orchids worked, as the documentation was fairly unclear. Thus, we split up: Eric looked for alpha in the historical data while Jerry worked on understanding the actual trading environment.
 
 Finding tradable correlations in the historical data was tougher than we initially thought. Some things that we tried were[^5]: 
@@ -138,10 +136,10 @@ Even with these optimizations, we still were beat out by the surge of teams who 
 
 </details>
 <details>
-<summary><h2>round 3️⃣</h2></summary>
+<summary><h2>Round 3️⃣</h2></summary>
 Gift baskets :basket:, chocolate 🍫, roses 🌹, and strawberries 🍓 were introduced in round 3, where a gift basket consisted of 4 chocolate bars, 6 strawberries, and a single rose. This round, we mainly traded spreads, which we defined as `basket - synthetic`, with `synthetic` being the sum of the price of all products in a basket.
 
-### spread 🧈
+### Spread
 In this round, we quickly converged on two hypotheses. The first hypothesis was that the synthetic would be leading baskets or vice versa, where changes in the price of one would lead to later changes in the price of the other.  Our second hypothesis was that the spread might simply just be mean reverting. We observed that the price of the spread–which theoretically should be 0–hovered around some fixed value, which we could trade around. We looked into leading/lagging relationships between the synthetic and the basket, but this wasn't very fruitful, so we then investigated the spread price. 
 
 ![newplot (1)](https://github.com/ericcccsliu/imc-prosperity-2/assets/62641231/6e56f911-8f7c-484c-8dab-32a1603ad2de)
@@ -162,9 +160,9 @@ After results from this round were released, we found that our actual pnl had a 
 
 </details>
 <details>
-<summary><h2>round 4️⃣</h2></summary>
+<summary><h2>Round 4️⃣</h2></summary>
   
-### coconuts/coconut coupon :coconut:
+### Coconuts/coconut coupon :coconut:
 Coconuts and coconut coupons were introduced in round 4. Coconut coupons were the 10,000 strike call option on coconuts, with a time to expiry of 250 days. The price of coconuts hovered around 10,000, so this option was near-the-money. 
 
 This round was fairly simple. Using Black-Scholes, we calculated the implied volatility of the option, and once we plotted this out, it became clear that the implied vol oscillated around a value of ~16%. We implemented a mean reverting strategy similar to round 3, and calculated the delta of the coconut coupons at each time in order to hedge with coconuts and gain pure exposure to vol. However, the delta was around 0.53 while the position limits for coconuts/coconut coupons were 300/600, respectively. This meant that we couldn't be fully hedged when holding 600 coupons (we would be holding 18 delta). Since the coupon was far away from expiry (thus, gamma didn't matter as much) and holding delta with vega was still positive ev (but higher var), we ran the variance in hopes of making more from our exposure to vol. 
@@ -174,7 +172,7 @@ This round was fairly simple. Using Black-Scholes, we calculated the implied vol
 While holding this variance worked out in our backtests, we experienced a fair amount of slippage in our submission–we got unlucky and lost money from our delta exposure. In retrospect, not fully delta hedging might not have been  a smart move–we were already second place and thus should've went for lower var to try and keep the lead. Our algorithm in this round made only 145k, dropping us down to a terrifying 26th place. However, in the results of this round, we saw Puerto Vallarta leap ahead with a whopping profit of 1.2 *million* seashells. We knew we could catch up and end up well within the top 10 if only we could figure out what they did. 
 </details>
 <details>
-<summary><h2>round 5️⃣</h2></summary>
+<summary><h2>Round 5️⃣</h2></summary>
   
 ![image](https://github.com/ericcccsliu/imc-prosperity-2/assets/62641231/5d3bbc3b-9d16-473e-a6da-954a84a66da9)
 
@@ -287,15 +285,8 @@ print("Max PnL:", max_pnl)
 
 
 </details>
-Our inputs here were prices–we found that generating trades over the predictor timeseries was sufficient due to the high correlation–volume percentage (percent of volume limit on the orderbook at each iteration), and spread (the average spread, cost of each trade), with a target of maximizing pnl. Using this dp algorithm, we generated a string of trades for each symbol, with `'b'` or `'s'` at each index representing the action at each timestamp. Using this algorithm, we achieved an algo pnl of 2.1 million seashells–the highest over all teams in this round! This brought us to a final overall standing of second place. 
+Our inputs here were prices–we found that generating trades over the predictor timeseries was sufficient due to the high correlation–volume percentage (percent of volume limit on the orderbook at each iteration), and spread (the average spread, cost of each trade), with a target of maximizing pnl. Using this dp algorithm, we generated a string of trades for each symbol, with `'b'` or `'s'` at each index representing the action at each timestamp. Using this algorithm, we achieved an algo pnl of 2.1 million seashells–the highest over all teams in this round! This brought us to a final overall standing of second place.
 
 </details>
 
-
-[^1]: in the discord, we saw many teams using linear regression on past prices for this, likely inspired by [last year's second place submission](https://github.com/ShubhamAnandJain/IMC-Prosperity-2023-Stanford-Cardinal) 🌲. imho this was a bit silly! doing a linear regression in price space is really just a slightly worse way of performing an average, and you get high multicollinearity since each previous price is highly correlated with its neighbors, and you can really easily overfit (for example, if prices in your data slowly trended up, your learned LR coefficients can add up to be >1, meaning that your algo will bias towards buying, which might be spurious) 
-[^2]: more specifically, we identified two participants in this market: a market making bot with order sizes quite uniform between 20 and 30, and a small bot that would occasionally cross fair with sizes uniform between 1 and 5.
-[^3]: this was very very likely overfit, but the magnitude was so small that it didn't really make a difference in our pnl at all
-[^4]: the south archipelago, where the ducks purportedly live
-[^5]: a lot of our efforts here can be found in [this notebook](https://github.com/ericcccsliu/imc-prosperity-2/blob/main/round2/eric-research.ipynb)
-[^6]: this conviction was strengthened by the fact that the sunlight, humidity data changed very gradually over very long timeframes–even if we could monetize this data, we'd only be able to monetize changes only a couple times each round, which didn't really seem to fit in this higher-frequency trading paradigm
-[^7]: our backtests here occasionally incurred a bit of lookahead bias, as for most experiments we kept the mean value constant, which was calculated over the same data. we were aware of this, and decided that since the mean didn't really move around too much across days, the effect of this would be minimal (and not worth adjusting our backtester to correct for) 
+For the open-source tools we want to again give credit to [Jasper van Merle](https://github.com/jmerle). For this write up we directed ourselves to the excellent report by the second place finish of [linear utility](https://github.com/ericcccsliu/imc-prosperity-2).
