@@ -100,18 +100,16 @@ Amethysts were fairly simple, as the fair price clearly never deviated from 10,0
 
 ### Starfruit
 
-Starfruits were an asset with an orderbook limit of 20 (as were amethysts). Here the price fluctuated much more though, usually hundreds 
+Starfruits were an asset with an orderbook limit of 20 (as were amethysts). Here the price fluctuated much more though, usually up to hundreds of seashells. Also, notice that the spread is pretty wide (around 6-7 consistently, which is much more then for the other products).
 
-However, using the mid price–even in averaging over it–didn't seem to be the best, as the mid price was noisy from market participants continually putting orders past mid (orders that we thought were good to fair and therefore ones that we wanted to trade against). Looking at the orderbook, we found out that, at all times, there was a market making bot quoting relatively large sizes on both sides, at prices that were unaffected by smaller participants[^2]. Using this market maker's mid price as a fair turned out to be much less noisy and generated more pnl in backtests. 
+![Starfruit](https://github.com/Luka-R-Lukacevic/prosperity2/blob/main/Images/Starfruit.jpeg)
 
-<img width="744" alt="Screenshot 2024-05-20 at 11 54 46 PM" src="https://github.com/ericcccsliu/imc-prosperity-2/assets/62641231/26d2f65c-2a5a-4252-8094-34a35a280020">
-<p align="center">
-  <em>histograms of volumes on the first and second level of the bid side</em>
-</p>
+This opened up the opportunity for market making, provided one had a good price estimate. After trying lots of things we concluded that there was no additional information in knowing the whole price history (in comparison to just the current orderbook). In mathematical terms you could say the prices followed a discrete-time Markov process. As a small digression, in the Black-Scholes (BS) model the assumed SDE that leads to the formula also necessitates the Markov property, we will see more of the BS formula later in round 4.
 
-Surprisingly, when we tested our algorithm on the website, we figured out that the website was marking our pnl to the market maker's mid instead of the actual mid price. We were able to verify this by backtesting a trading algorithm that bought 1 starfruit in the first timestamp and simply held it to the end–our pnl graph marked to market maker mid in our own backtesting environment exactly replicated the pnl graph on the website. This boosted our confidence in using the market maker mid as fair, as we realized that we'd just captured the true internal fair of the game. Besides this, some research on the fair price showed that starfruit was very slightly mean reverting[^3], and the rest was very similar to amethysts, where we took orders and quoted orders with a certain edge, optimizing all parameters in our internal backtester with a grid search.
+Still, while we concluded there was basically no point in taking complicated history into account for the fair price, we still had the problem that we could not just use the mid-price (average of highest bid and lowest ask) as our price estimate, since if there are good trades in the orderbook for us, then these will necessarily be either exceptionally high bids or exceptionally low asks. One could then use past history to get a better fair estimate. This works fine, but something else worked even better. Essentially one could see that in the orderbook there were usually bids and ask that had high volume and were around 6-7 apart and then some small deviant orders (in real markets these would be called micro-noise).
 
-After round 1, our team was ranked #3 in the world overall. We had an algo trading profit of 34,498 seashells–just 86 seashells behind first place.
+![Starfruit micro noise](https://github.com/Luka-R-Lukacevic/prosperity2/blob/main/Images/Starfruit%orderbook.jpeg)
+
 
 </details>
 
@@ -289,4 +287,4 @@ Our inputs here were prices–we found that generating trades over the predictor
 
 </details>
 
-For the open-source tools we want to again give credit to [Jasper van Merle](https://github.com/jmerle). For this write up we followed the outline of the excellent report by the second place finish of [linear utility](https://github.com/ericcccsliu/imc-prosperity-2).
+For the open-source tools we want to again give credit to [Jasper van Merle](https://github.com/jmerle). For this write up we followed the outline of the excellent report by the second place finish of [linear utility](https://github.com/ericcccsliu/imc-prosperity-2). Some of the ideas were the ones featured from last years second place, the [Stanford Cardinals](https://github.com/ShubhamAnandJain/IMC-Prosperity-2023-Stanford-Cardinal/tree/main).
