@@ -108,7 +108,9 @@ This opened up the opportunity for market making, provided one had a good price 
 
 Still, while we concluded there was basically no point in taking complicated history into account for the fair price, we still had the problem that we could not just use the mid-price (average of highest bid and lowest ask) as our price estimate, since if there are good trades in the orderbook for us, then these will necessarily be either exceptionally high bids or exceptionally low asks. One could then use past history to get a better fair estimate. This works fine, but something else worked even better. Essentially one could see that in the orderbook there were usually bids and ask that had high volume and were around 6-7 apart and then some small deviant orders (in real markets these would be called micro-noise).
 
-![Starfruit micro noise](https://github.com/Luka-R-Lukacevic/prosperity2/blob/main/Images/Starfruit%orderbook.jpeg)
+![Starfruit micro noise](https://github.com/Luka-R-Lukacevic/prosperity2/blob/main/Images/Starfruit%20orderbook.jpeg)
+
+A nifty solution came from last years second place, the [Stanford Cardinals](https://github.com/ShubhamAnandJain/IMC-Prosperity-2023-Stanford-Cardinal/tree/main). The mid-price estimate is simply the mid-price by lowest-bid and highest-ask. In this market this eliminates the micro-noise, allowing us to pick off the bad orders.
 
 
 </details>
@@ -117,7 +119,7 @@ Still, while we concluded there was basically no point in taking complicated his
 <summary><h2>Round 2️⃣</h2></summary>
   
 ### Orchids
-Orchids were introduced in round 2, as well as a bunch of data on sunlight, humidity, import/export tariffs, and shipping costs. The premise was that orchids were grown on a separate island[^4], and had to be imported–subject to import tariffs and shipping costs, and that they would degrade with suboptimal levels of sunlight and humidity. We were able to trade orchids both in a market on our own island, as well as through importing them from the South archipelago. With this, we had two initial approaches. The obvious approach, to us, was to look for alpha in all the data available, investigating if the price of orchids could be predicted using sunlight, humidity, etc. The other approach involved understanding exactly how the mechanisms for trading orchids worked, as the documentation was fairly unclear. Thus, we split up: Eric looked for alpha in the historical data while Jerry worked on understanding the actual trading environment.
+Orchids were introduced in round 2, as well as a bunch of data on sunlight, humidity, import/export tariffs, and shipping costs. The premise was that orchids were grown on a separate island, and had to be imported–subject to import tariffs and shipping costs, and that they would degrade with suboptimal levels of sunlight and humidity. We were able to trade orchids both in a market on our own island, as well as through importing them from the South archipelago. With this, we had two initial approaches. The obvious approach, to us, was to look for alpha in all the data available, investigating if the price of orchids could be predicted using sunlight, humidity, etc. The other approach involved understanding exactly how the mechanisms for trading orchids worked, as the documentation was fairly unclear. Thus, we split up: Eric looked for alpha in the historical data while Jerry worked on understanding the actual trading environment.
 
 Finding tradable correlations in the historical data was tougher than we initially thought. Some things that we tried were[^5]: 
 - Just trying to find correlations to orchids returns from returns in sunlight, humidity, tarriffs, costs. Initial results from this seemed interesting–but the correlations we found here were likely spurious.
@@ -287,4 +289,4 @@ Our inputs here were prices–we found that generating trades over the predictor
 
 </details>
 
-For the open-source tools we want to again give credit to [Jasper van Merle](https://github.com/jmerle). For this write up we followed the outline of the excellent report by the second place finish of [linear utility](https://github.com/ericcccsliu/imc-prosperity-2). Some of the ideas were the ones featured from last years second place, the [Stanford Cardinals](https://github.com/ShubhamAnandJain/IMC-Prosperity-2023-Stanford-Cardinal/tree/main).
+For the open-source tools we want to again give credit to [Jasper van Merle](https://github.com/jmerle). For this write up we followed the outline of the excellent report by the second place finish of [linear utility](https://github.com/ericcccsliu/imc-prosperity-2). Some of the ideas were the ones featured from the [Cardinals](https://github.com/ShubhamAnandJain/IMC-Prosperity-2023-Stanford-Cardinal/tree/main).
