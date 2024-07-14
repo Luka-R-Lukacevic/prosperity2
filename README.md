@@ -78,7 +78,7 @@ Instead of building our tools in-house, we decided to leverage the open-source w
 We realized we needed a comprehensive backtesting environment very early on. After going after that ourselves with not a lot of success, fortunately, Jasper van Merle's [backtester](https://github.com/jmerle/imc-prosperity-2-backtester) was released to take in historical data and a trading algorithm. With the historical data, it would construct all the necessary information (replicating the actual trading environment perfectly) that our trading algorithm needed, input it into our trading algorithm, and receive the orders that our algorithm would send. Then, it would match those orders to the orderbook to generate trades. After running, the backtester would create a log file in the exact same format as the Prosperity website, that the visualiser was then able to visualise.
 
 
-![Backtested PNL](https://github.com/Luka-R-Lukacevic/prosperity2/blob/main/Backtester%20Image.jpeg)
+![Backtested PNL](https://github.com/Luka-R-Lukacevic/prosperity2/blob/main/Images/Backtester%20Image.jpeg)
 
 
 ### Visualiser
@@ -86,7 +86,7 @@ We realized we needed a comprehensive backtesting environment very early on. Aft
 Jasper van Merle's [visualizer](https://jmerle.github.io/imc-prosperity-2-visualizer/?/visualizer) visualiser was an immense tool for us that provided a powerful and flexible way to analyze our trading data, helping us to identify and rectify issues, and ultimately improve our trading strategies. 
 
 
-![Visualiser in Action](https://github.com/Luka-R-Lukacevic/prosperity2/blob/main/Visualiser%20Image.png)
+![Visualiser in Action](https://github.com/Luka-R-Lukacevic/prosperity2/blob/main/Images/Visualiser%20Image.png)
 
 
 </details>
@@ -96,11 +96,11 @@ Jasper van Merle's [visualizer](https://jmerle.github.io/imc-prosperity-2-visual
 In round 1, we had access to two symbols to trade: amethysts and starfruit. 
 
 ### Amethysts
-Amethysts were fairly simple, as the fair price clearly never deviated from 10,000. As such, we wrote our algorithm to trade against bids above 10,000 and asks below 10,000. Besides taking orders, our algorithm also would market-make, placing bids and asks below and above 10,000, respectively, with a certain edge.
+Amethysts were fairly simple, as the fair price clearly never deviated from 10,000. As such, we wrote our algorithm to trade against bids above 10,000 and asks below 10,000. Besides taking orders, our algorithm also would market-make, placing bids and asks below and above 10,000, respectively.
 
 ### Starfruit
 
-Finding a good fair price for starfruit was tougher, as its price wasn't fixed–it would randomly walk around. Nonetheless, we observed that the price was relatively stable locally. So we created a fair using a rolling average of the mid price over the last *n* timestamps, where *n* was a parameter which we could optimize over in backtests[^1]. Market-making, taking, and clearing (the same strategies we did with amethysts) worked quite well around this fair value. 
+Starfruits were an asset with an orderbook limit of 20 (as were amethysts). Here the price fluctuated much more though, usually hundreds 
 
 However, using the mid price–even in averaging over it–didn't seem to be the best, as the mid price was noisy from market participants continually putting orders past mid (orders that we thought were good to fair and therefore ones that we wanted to trade against). Looking at the orderbook, we found out that, at all times, there was a market making bot quoting relatively large sizes on both sides, at prices that were unaffected by smaller participants[^2]. Using this market maker's mid price as a fair turned out to be much less noisy and generated more pnl in backtests. 
 
@@ -289,4 +289,4 @@ Our inputs here were prices–we found that generating trades over the predictor
 
 </details>
 
-For the open-source tools we want to again give credit to [Jasper van Merle](https://github.com/jmerle). For this write up we directed ourselves to the excellent report by the second place finish of [linear utility](https://github.com/ericcccsliu/imc-prosperity-2).
+For the open-source tools we want to again give credit to [Jasper van Merle](https://github.com/jmerle). For this write up we followed the outline of the excellent report by the second place finish of [linear utility](https://github.com/ericcccsliu/imc-prosperity-2).
