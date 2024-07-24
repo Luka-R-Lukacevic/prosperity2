@@ -4,7 +4,9 @@
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 
-In this repo we present ideas and code for the second IMC Prosperity competition, hosted in 2024. Our team, Aruba Capital, finished 22nd globally out of more then 2800 active competitors, placing us in the top 1%. In this write up we will focus on the algorithmic coding rounds (and not the manual challenges).
+In this repo we present ideas and code for the second IMC Prosperity competition, hosted in 2024. Our team, Aruba Capital, finished 22nd globally out of more then 2800 active competitor teams, placing us in the top 1%.
+
+![Confirmation](https://github.com/Luka-R-Lukacevic/prosperity2/blob/main/Images/Confirmation%20IMC.jpeg)
 
 ## Team members
 
@@ -132,26 +134,9 @@ After this round we were ranked 48th. We probably could have gotten a higher ran
 </details>
 <details>
 <summary><h2>Round 3️⃣</h2></summary>
-Gift baskets, chocolate, roses, and strawberries were introduced in round 3, where a gift basket consisted of 4 chocolate bars, 6 strawberries, and a single rose. This round, we mainly traded spreads, which we defined as `basket - synthetic`, with `synthetic` being the sum of the price of all products in a basket.
+Gift baskets, chocolate, roses, and strawberries were introduced in round 3, where a gift basket consisted of 4 chocolate bars, 6 strawberries, and a single rose. This round, we mainly traded the gift basket on the signal of the chocolate, the strawberries and the rose minus a premium. We assumed the price of the basket actually trails the prices of the other assets (similar to the Cardinal's strategy last year), the only change we made in our strategy was that we compared not the difference of these two assets but instead the ratio (with the basket again trading at a premium of 1.005397 times the sum of the individual products, the standard deviation being 0.00109086). If the z-score of the deviation is sufficently high we will then buy the relatively cheap asset and sell the relatively expensive asset, hoping to make a gain if the price ratio reverts back to the mean.
 
-### Spread
-In this round, we quickly converged on two hypotheses. The first hypothesis was that the synthetic would be leading baskets or vice versa, where changes in the price of one would lead to later changes in the price of the other.  Our second hypothesis was that the spread might simply just be mean reverting. We observed that the price of the spread–which theoretically should be 0–hovered around some fixed value, which we could trade around. We looked into leading/lagging relationships between the synthetic and the basket, but this wasn't very fruitful, so we then investigated the spread price. 
-
-![newplot (1)](https://github.com/ericcccsliu/imc-prosperity-2/assets/62641231/6e56f911-8f7c-484c-8dab-32a1603ad2de)
-
-Looking at the spread, we found that the price oscillated around ~370 across all three days of our historical data. Thus, we could profitably trade a mean-reverting strategy, buying spreads (going long baskets and short synthetic) when the spread price was below average, and selling spreads when the price was above. We tried various different ways to parameterize this trade. Due to our position limits, which were relatively small (about 2x the volume on the book at any instant), and the relatively small number of mean-reverting trading opportunities, we realized that timing the trade correctly was critical, and could result in a large amount of additional pnl. 
-
-We tried various approaches in parameterizing this trade. A simple, first-pass strategy was just to set hardcoded prices at which to trade–for example, trading only when the spread deviated from the average value by a certain amount. We backtested to optimize these hardcoded thresholds, and our best parameters netted us ~120k in projected pnl. However, with this strategy, we noticed that we could lose out on a lot of pnl if the spread price reverted before touching our threshold. To remedy this, we could set our thresholds closer, but then we'd also lose pnl from trading before the spread price reached a local max/min. 
-
-Therefore, we developed a more adaptive algorithm for spreads. We traded on a modified z-score, using a hardcoded mean and a rolling window standard deviation, with the window set relatively small. The idea behind this was that there should be a fundamental reason behind the mean of spread (think the price of the basket itself), but the volatility each day would be less predictable. Then, we thresholded the z-score, selling spreads when our z-score went above a certain value and buying when the z-score dropped below. By using a small window for our rolling standard deviation, we'd see our z-score spike when the standard deviation drastically dropped–and this would often happen right as the price started reverting, allowing us to trade closer to local minima/maxima. This idea bumped our backtest pnl up to ~135k. 
-
-
-![newplot (2)](https://github.com/ericcccsliu/imc-prosperity-2/assets/62641231/0db11d51-8916-4ed5-83f6-82faeb846267)
-<p align="center">
-  <em>a plot of spread prices and our modified z-score, as well as z-score thresholds (in green) to trade at</em>
-</p>
-
-After results from this round were released, we found that our actual pnl had a significant amount of slippage compared to our backtests–we made only 111k seashells from our algo. Nevertheless, we got a bit lucky–all the teams ahead of us in this round seemed to overfit significantly more, as we were ranked #2 overall.
+This worked reasonably well, but we were not able to make up any ground, so we stayed at 48th place after this round.
 
 </details>
 <details>
