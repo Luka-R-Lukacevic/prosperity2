@@ -134,6 +134,7 @@ After this round we were ranked 48th. We probably could have gotten a higher ran
 </details>
 <details>
 <summary><h2>Round 3️⃣</h2></summary>
+  
 Gift baskets, chocolate, roses, and strawberries were introduced in round 3, where a gift basket consisted of 4 chocolate bars, 6 strawberries, and a single rose. This round, we mainly traded the gift basket on the signal of the chocolate, the strawberries and the rose minus a premium. We assumed the price of the basket actually trails the prices of the other assets (similar to the Cardinal's strategy last year), the only change we made in our strategy was that we compared not the difference of these two assets but instead the ratio (with the basket again trading at a premium of 1.005397 times the sum of the individual products, the standard deviation being 0.00109086). If the z-score of the deviation is sufficently high we will then buy the relatively cheap asset and sell the relatively expensive asset, hoping to make a gain if the price ratio reverts back to the mean.
 
 This worked reasonably well, but we were not able to make up any ground, so we stayed at 48th place after this round.
@@ -142,33 +143,76 @@ This worked reasonably well, but we were not able to make up any ground, so we s
 <details>
 <summary><h2>Round 4️⃣</h2></summary>
   
-### Coconuts/coconut coupon :coconut:
 Coconuts and coconut coupons were introduced in round 4. Coconut coupons were the 10,000 strike call option on coconuts, with a time to expiry of 250 days. The price of coconuts hovered around 10,000, so this option was near-the-money. 
 
-This round was fairly simple. Using Black-Scholes, we calculated the implied volatility of the option, and once we plotted this out, it became clear that the implied vol oscillated around a value of ~16%. We implemented a mean reverting strategy similar to round 3, and calculated the delta of the coconut coupons at each time in order to hedge with coconuts and gain pure exposure to vol. However, the delta was around 0.53 while the position limits for coconuts/coconut coupons were 300/600, respectively. This meant that we couldn't be fully hedged when holding 600 coupons (we would be holding 18 delta). Since the coupon was far away from expiry (thus, gamma didn't matter as much) and holding delta with vega was still positive ev (but higher var), we ran the variance in hopes of making more from our exposure to vol. 
+In this round, our approach was relatively straightforward. We used the Black-Scholes model to calculate the implied volatility of the options on coconut coupons. Once plotted, the implied volatility oscillated around a value of approximately 16%. Based on this observation, we implemented a mean-reverting strategy similar to what we used in round 3. Specifically, we calculated the delta of the coconut coupons at each point in time to hedge with coconuts, aiming to gain pure exposure to volatility.
 
-![newplot (3)](https://github.com/ericcccsliu/imc-prosperity-2/assets/62641231/21fc47f7-727f-48a4-bf4e-b9b9c5fd25a1)
+### Theoretical Background: Black-Scholes Model
 
-While holding this variance worked out in our backtests, we experienced a fair amount of slippage in our submission–we got unlucky and lost money from our delta exposure. In retrospect, not fully delta hedging might not have been  a smart move–we were already second place and thus should've went for lower var to try and keep the lead. Our algorithm in this round made only 145k, dropping us down to a terrifying 26th place. However, in the results of this round, we saw Puerto Vallarta leap ahead with a whopping profit of 1.2 *million* seashells. We knew we could catch up and end up well within the top 10 if only we could figure out what they did. 
+The Black-Scholes model is a mathematical model for pricing an options contract. It assumes that the price of the underlying asset follows a geometric Brownian motion with constant volatility and drift. The model is derived from the following Stochastic Differential Equation (SDE):
+
+$$dS_t = \mu S_t dt + \sigma S_t dW_t$$
+
+where:
+- $S_t$ is the price of the underlying asset at time $t$,
+- $\mu$ is the drift rate of the asset,
+- $\sigma$ is the volatility of the asset,
+- $dW_t$ is a Wiener process or Brownian motion.
+
+To price an option, the Black-Scholes model uses a risk-neutral measure, where the drift rate $\mu$ is replaced by the risk-free interest rate $r$. The solution to the SDE leads to the Black-Scholes formula for a European call option price $C$:
+
+$$C(S_t, t) = S_t N(d_1) - K e^{-r(T-t)} N(d_2)$$
+
+where:
+- $C$ is the call option price,
+- $S_t$ is the current price of the asset,
+- $K$ is the strike price of the option,
+- $T$ is the time to maturity,
+- $N(\cdot)$ is the cumulative distribution function of the standard normal distribution,
+- $d_1 = \frac{\ln(S_t/K) + (r + \sigma^2/2)(T-t)}{\sigma\sqrt{T-t}}$,
+- $d_2 = d_1 - \sigma\sqrt{T-t}$.
+
+### Derivation of the Black-Scholes Formula
+
+To derive the formula, we start with the SDE for the underlying asset's price:
+
+$$dS_t = \mu S_t dt + \sigma S_t dW_t$$
+
+Applying the Itô's lemma to a function \( C(S, t) \) (representing the option price), we get:
+
+$$dC = \frac{\partial C}{\partial S} dS + \frac{\partial C}{\partial t} dt + \frac{1}{2} \frac{\partial^2 C}{\partial S^2} dS^2$$
+
+Substituting the SDE for \( dS \) and noting \( dS^2 = (\sigma S)^2 dt \), we obtain:
+
+$$dC = \frac{\partial C}{\partial S} (\mu S dt + \sigma S dW) + \frac{\partial C}{\partial t} dt + \frac{1}{2} \frac{\partial^2 C}{\partial S^2} \sigma^2 S^2 dt$$
+
+In the risk-neutral world, the expected return \( \mu \) is replaced by the risk-free rate \( r \). Therefore, under the risk-neutral measure, the equation simplifies to:
+
+$$dC = \frac{\partial C}{\partial S} (r S dt + \sigma S dW) + \frac{\partial C}{\partial t} dt + \frac{1}{2} \frac{\partial^2 C}{\partial S^2} \sigma^2 S^2 dt$$
+
+Eliminating the stochastic term \( dW \) by a hedging argument and equating the deterministic terms, we arrive at the Black-Scholes partial differential equation (PDE):
+
+$$\frac{\partial C}{\partial t} + r S \frac{\partial C}{\partial S} + \frac{1}{2} \sigma^2 S^2 \frac{\partial^2 C}{\partial S^2} = rC$$
+
+Solving this PDE, with boundary conditions corresponding to the payoff of a European call option, results in the Black-Scholes formula for the call option price.
+
+### Trading Strategy: Mean Reversion and Delta Hedging
+
+In practice, we observed that the implied volatility (vol) of the coconut coupon options fluctuated around a mean value of approximately 16%. To exploit this mean-reverting behavior, we used a trading strategy that involved hedging our exposure to delta (the sensitivity of the option's price to changes in the price of the underlying asset) using the underlying coconuts.
+
+The delta $\Delta$ of an option measures how much the price of the option is expected to change per unit change in the price of the underlying asset. For our strategy, the delta of the coconut coupons was approximately 0.53.
+
+Since the coupons were far from expiry, the gamma (the rate of change of delta with respect to the price of the underlying asset) was not a significant factor.
+
+Using the BS formula worked decently well so we found ourselves in 18th place (and then finally in place 23 after the manual score of some teams got readjusted).
+
+![Round 4 Place](https://github.com/Luka-R-Lukacevic/prosperity2/blob/main/Images/Round%20four%20place.jpg)
+
 </details>
 <details>
 <summary><h2>Round 5️⃣</h2></summary>
 
-Our leading hypothesis in trying to replicate Puerto Vallarta's profits were that they must've found some way to predict the future–profits on the order of 1.2 million could reasonably match up with a successful stat. arb strategy across multiple symbols. So, we started blasting away with linear regressions on lagged and synchronous returns across all symbols and all days of our data, with the hypothesis that symbols from different days could have correlations that we'd previously missed. However, we didn't find anything particularly interesting here–starfruits seemed to have a bit of lagged predictive power in all other symbols, but this couldn't explain 1.2 million in additional profits.
-
-As a last-ditch attempt in this front, we recalled that last year's competition (which we read about in [Stanford Cardinal's awesome writeup](https://github.com/ShubhamAnandJain/IMC-Prosperity-2023-Stanford-Cardinal)) had many similarities to this competition–especially in the first round, where the symbols we traded basically sounded the exact same. So, we went and sourced last year's data from public GitHub repositories, and performed a linear regression from returns in each of last year's symbols to returns in each symbol of this year. The results we found were surprising: diving gear returns from last year's competition, with a multiplier of ~3, was almost a perfect predictor of roses, with a $R^2$ of 0.99. Additionally, coconuts from last year was a perfect predictor of coconuts from this year, with a beta of 1.25 and an $R^2$ of 0.99.
-
-![image](https://github.com/ericcccsliu/imc-prosperity-2/assets/62641231/64b2c041-b14d-47eb-9c25-df8cb6fcc290)
-
-These discoveries were quite silly, but nonetheless, our goal was to maximize pnl, and as the data from last year was publically available on the internet, we felt like this was still fair game. The rest of our efforts in this competition centered around maximizing the value we could extract from the market with our new knowledge. We believed that many other teams might find these same relationships, and therefore optimization was key.
-
-As a first pass, we simply bought/sold coconuts and roses when our predicted price rose/fell (beyond some threshold to account for spread costs) over a certain number of future iterations. While this worked spectacularly (in comparison to our pnl from literally all previous rounds), we thought we could do better. Indeed, with the data from last year, we had all local maxima/minima, and thus we could theoretically time our trades perfectly and extract max. value. 
-
-To do this systematically across the three symbols we wanted to trade (roses, coconuts, and gift baskets, due to their natural correlation with roses), we developed a dynamic programming algorithm. Our algorithm took many factors into account–costs of crossing spread, the volume we could take at iteration (the volume on the orderbook), and our volume limits.
-
-The motivation behind the complexity of our dp algorithm was the fact that, at each iteration, we couldn't necessarily achieve our full desired position–therefore, we needed a state for each potential position that we could feasibly achieve. A simple example of this is to imagine a product going through the following prices: 
-$$8 \rightarrow 7 \rightarrow 12 \rightarrow 10$$
-With a position limit of 2, and with sufficient volume on the orderbook, the optimal trades would be: sell 2 -> buy 4 -> sell 4, with a pnl of 16. Now imagine if you could only buy/sell 2 shares at each iteration. Then, the optimal solution would change–you'd want to buy 2 -> buy 2 -> sell 2, with an overall pnl of 14. 
+In round 5 all prior trade history got annotated, so we were able to reconstruct the trade parties to find alpha. We were pretty conservative, only using very clear signals. The only signal we (and other teams it turns out) was Rianna being on the money when it comes to roses, always selling at the top and buying at the bottom. Using this made us improve from 22nd to 23rd.
 
 
 </details>
